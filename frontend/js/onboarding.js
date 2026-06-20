@@ -14,7 +14,6 @@
   var form = document.getElementById("onboarding-form");
   var errorEl = document.getElementById("onboarding-error");
   var submitBtn = document.getElementById("onboarding-submit");
-  var backLoginBtn = document.getElementById("onboarding-back-login");
   var previewImg = document.getElementById("onboarding-avatar-preview");
   var previewLabel = document.getElementById("onboarding-preview-label");
   var parentNameEl = document.getElementById("onboarding-parent-name");
@@ -54,12 +53,6 @@
   function showLoginRequired() {
     showError("ابتدا وارد حساب کاربری شوید.");
     setFormEnabled(false);
-    if (backLoginBtn) {
-      backLoginBtn.hidden = false;
-      backLoginBtn.onclick = function () {
-        location.href = "/login";
-      };
-    }
   }
 
   function setLoading(loading) {
