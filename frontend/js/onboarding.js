@@ -135,7 +135,7 @@
             try { localStorage.setItem("storytelling_child_name", childName); } catch (err) { /* ignore */ }
           }
         }
-        window.location.href = "/";
+        window.location.href = "/home";
       } catch (err) {
         var msg = "ذخیره اطلاعات ناموفق بود.";
         if (err.message === "Failed to fetch") {

@@ -1615,9 +1615,6 @@
           if (result.user.childName) applyChildNameToForm(result.user.childName);
           syncChildDisplay();
           syncProfileAvatarPicker();
-          if (!result.user.childGender) {
-            window.location.href = "/onboarding";
-          }
         }
       })
       .catch(function () {

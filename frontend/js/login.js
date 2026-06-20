@@ -41,7 +41,7 @@
 
   function redirectAfterAuth(user) {
     if (user && user.childGender) {
-      window.location.href = "/";
+      window.location.href = "/home";
     } else {
       window.location.href = "/onboarding";
     }
