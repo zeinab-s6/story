@@ -43,7 +43,7 @@ body.login-page.login-page--night {
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  background-color: #87ceeb;
+  background-color: #1a2038;
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
@@ -57,7 +57,7 @@ body.login-page.login-page--night {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 42%;
+  object-position: center center;
   display: block;
   pointer-events: none;
   user-select: none;
@@ -70,7 +70,7 @@ body.login-page.login-page--night {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: rgba(5, 8, 20, 0);
+  background: rgba(8, 12, 28, 0.08);
   transition: background var(--scene-transition);
 }
 
@@ -79,7 +79,7 @@ body.login-page.login-page--night .login-bg {
 }
 
 body.login-page.login-page--night .login-bg::after {
-  background: rgba(5, 8, 20, 0.58);
+  background: rgba(5, 8, 20, 0.28);
 }
 
 .login-scene {
@@ -350,29 +350,28 @@ body.login-page.login-page--night .login-night-hint {
 }
 
 .login-logo-ring {
-  width: 96px;
-  height: 96px;
-  margin: 0 auto 16px;
+  width: 108px;
+  height: 108px;
+  margin: 0 auto 14px;
   border-radius: 50%;
   overflow: hidden;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1.5px solid rgba(47, 49, 54, 0.08);
-  box-shadow: 0 8px 32px rgba(47, 49, 54, 0.08);
-  transition: background var(--scene-transition), border-color var(--scene-transition), box-shadow var(--scene-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.28);
+  transition: box-shadow var(--scene-transition);
 }
 
 body.login-page.login-page--night .login-logo-ring {
-  background: linear-gradient(145deg, rgba(219, 39, 119, 0.12), rgba(255, 255, 255, 0.04));
-  border-color: rgba(219, 39, 119, 0.2);
-  box-shadow: 0 0 0 8px rgba(219, 39, 119, 0.05), 0 16px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.42), 0 0 0 3px rgba(255, 255, 255, 0.06);
 }
 
 .login-logo {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -536,7 +535,7 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
 
 @media (max-width: 768px) {
   .login-bg__img {
-    object-position: center 32%;
+    object-position: center center;
   }
 
   .login-shell {
@@ -546,19 +545,19 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
 
 @media (max-width: 480px) {
   .login-bg__img {
-    object-position: center 28%;
+    object-position: center 38%;
   }
 }
 
 @media (max-width: 768px) and (orientation: landscape) {
   .login-bg__img {
-    object-position: center center;
+    object-position: center 42%;
   }
 }
 
 @media (min-width: 1200px) {
   .login-bg__img {
-    object-position: center 45%;
+    object-position: center center;
   }
 }
 
@@ -568,14 +567,9 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
   }
 
   .login-logo-ring {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 12px;
-  }
-
-  .login-logo {
-    width: 100%;
-    height: 100%;
+    width: 88px;
+    height: 88px;
+    margin-bottom: 10px;
   }
 
   .login-app-name {
@@ -632,14 +626,9 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
 
 @media (max-height: 620px) {
   .login-logo-ring {
-    width: 64px;
-    height: 64px;
+    width: 72px;
+    height: 72px;
     margin-bottom: 8px;
-  }
-
-  .login-logo {
-    width: 100%;
-    height: 100%;
   }
 
   .login-app-name {
