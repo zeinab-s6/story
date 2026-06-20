@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var TOKEN_KEY = "storytelling_auth_token";
-  var USER_KEY = "storytelling_auth_user";
+  var TOKEN_KEY = "authToken";
+  var USER_KEY = "currentUser";
 
   function getToken() {
     return localStorage.getItem(TOKEN_KEY);

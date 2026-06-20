@@ -233,8 +233,33 @@
   }
 
   async function fetchStoryAudioBlob(url) {
-    var response = await fetch(url, { headers: getAuthFetchHeaders() });
+    var response;
+    try {
+      response = await fetch(url, { headers: getAuthFetchHeaders() });
+    } catch (err) {
+      if (window.StorytellingAPI && window.StorytellingAPI.logFetchFailure) {
+        window.StorytellingAPI.logFetchFailure("story audio network error", {
+          url: url,
+          status: null,
+          body: null,
+          error: err,
+        });
+      }
+      throw err;
+    }
     if (!response.ok) {
+      var errBody = null;
+      try {
+        errBody = await response.clone().text();
+      } catch (e) { /* ignore */ }
+      if (window.StorytellingAPI && window.StorytellingAPI.logFetchFailure) {
+        window.StorytellingAPI.logFetchFailure("story audio HTTP error", {
+          url: url,
+          status: response.status,
+          body: errBody,
+          error: null,
+        });
+      }
       throw new Error("بارگذاری فایل صوتی ناموفق بود.");
     }
     return response.blob();
@@ -1148,11 +1173,41 @@
   // Future standalone TTS endpoint example:
   // POST /api/tts/generate
   async function generateVoiceFromAPI(text, voice, settings) {
-    var response = await fetch(window.API_BASE_URL + "/api/tts/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text, voice: voice, settings: settings }),
-    });
+    var url = `${window.API_BASE_URL}/api/tts/generate`;
+    var response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text, voice: voice, settings: settings }),
+      });
+    } catch (err) {
+      if (window.StorytellingAPI && window.StorytellingAPI.logFetchFailure) {
+        window.StorytellingAPI.logFetchFailure("tts generate network error", {
+          url: url,
+          status: null,
+          body: null,
+          error: err,
+        });
+      }
+      throw err;
+    }
+    if (!response.ok) {
+      var errBody = null;
+      try {
+        errBody = await response.clone().json();
+      } catch (e) {
+        try { errBody = await response.clone().text(); } catch (e2) { /* ignore */ }
+      }
+      if (window.StorytellingAPI && window.StorytellingAPI.logFetchFailure) {
+        window.StorytellingAPI.logFetchFailure("tts generate HTTP error", {
+          url: url,
+          status: response.status,
+          body: errBody,
+          error: null,
+        });
+      }
+    }
     return response.json();
   }
 

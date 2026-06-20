@@ -14,6 +14,7 @@
   var form = document.getElementById("onboarding-form");
   var errorEl = document.getElementById("onboarding-error");
   var submitBtn = document.getElementById("onboarding-submit");
+  var backLoginBtn = document.getElementById("onboarding-back-login");
   var previewImg = document.getElementById("onboarding-avatar-preview");
   var previewLabel = document.getElementById("onboarding-preview-label");
   var parentNameEl = document.getElementById("onboarding-parent-name");
@@ -27,6 +28,39 @@
 
   var BRAND_SUBMIT_LABEL =
     'ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>';
+
+  function hasValidLocalSession() {
+    if (!window.StorytellingAuth) return false;
+    var token = window.StorytellingAuth.getToken();
+    var user = window.StorytellingAuth.getUser();
+    return !!(token && user);
+  }
+
+  function setFormEnabled(enabled) {
+    if (!form) return;
+    form.querySelectorAll("input").forEach(function (el) {
+      el.disabled = !enabled;
+    });
+    if (submitBtn) {
+      if (!enabled) {
+        submitBtn.disabled = true;
+        return;
+      }
+      var selected = form.querySelector('input[name="childGender"]:checked');
+      submitBtn.disabled = !selected;
+    }
+  }
+
+  function showLoginRequired() {
+    showError("ابتدا وارد حساب کاربری شوید.");
+    setFormEnabled(false);
+    if (backLoginBtn) {
+      backLoginBtn.hidden = false;
+      backLoginBtn.onclick = function () {
+        location.href = "/login";
+      };
+    }
+  }
 
   function setLoading(loading) {
     if (!submitBtn) return;
@@ -49,7 +83,7 @@
     if (!gender || !AVATARS[gender]) return;
     if (previewImg) previewImg.src = AVATARS[gender];
     if (previewLabel) previewLabel.textContent = getPreviewLabel(gender);
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn && hasValidLocalSession()) submitBtn.disabled = false;
   }
 
   function initParentName() {
@@ -59,25 +93,9 @@
     }
   }
 
-  function syncProfileFromServer() {
-    if (!window.StorytellingAPI) return;
-    window.StorytellingAPI.getMe()
-      .then(function (result) {
-        if (!result || !result.user) return;
-        window.StorytellingAuth.updateUser(result.user);
-        if (result.user.childGender) {
-          window.location.href = "/";
-          return;
-        }
-        if (parentNameEl && result.user.displayName) {
-          parentNameEl.textContent = result.user.displayName;
-        }
-      })
-      .catch(function () { /* use local session */ });
-  }
-
   if (childNameInput) {
     childNameInput.addEventListener("input", function () {
+      if (!hasValidLocalSession()) return;
       var selected = form && form.querySelector('input[name="childGender"]:checked');
       if (selected) updatePreview(selected.value);
       else if (previewLabel) {
@@ -90,6 +108,7 @@
   if (form) {
     form.querySelectorAll('input[name="childGender"]').forEach(function (input) {
       input.addEventListener("change", function () {
+        if (!hasValidLocalSession()) return;
         showError("");
         updatePreview(input.value);
       });
@@ -98,6 +117,11 @@
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
       showError("");
+
+      if (!hasValidLocalSession()) {
+        showLoginRequired();
+        return;
+      }
 
       var selected = form.querySelector('input[name="childGender"]:checked');
       if (!selected) {
@@ -133,6 +157,9 @@
     });
   }
 
-  initParentName();
-  syncProfileFromServer();
+  if (!hasValidLocalSession()) {
+    showLoginRequired();
+  } else {
+    initParentName();
+  }
 })();

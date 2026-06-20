@@ -8,24 +8,38 @@ const DEV_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
+const PRODUCTION_ORIGINS = [
+  ...env.FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean),
+  'https://storytelling-sepia.vercel.app',
+];
+
+function uniqueOrigins(origins) {
+  return [...new Set(origins.filter(Boolean))];
+}
+
+function createOriginCallback(allowedOrigins) {
+  const allowed = uniqueOrigins(allowedOrigins);
+  return function origin(origin, callback) {
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS: origin مجاز نیست.'));
+    }
+  };
+}
+
 export function getCorsOptions() {
   if (env.isProduction) {
     return {
-      origin: env.FRONTEND_ORIGIN,
-      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      origin: createOriginCallback(PRODUCTION_ORIGINS),
+      methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     };
   }
 
   return {
-    origin(origin, callback) {
-      if (!origin || DEV_ORIGINS.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS: origin مجاز نیست.'));
-      }
-    },
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    origin: createOriginCallback(DEV_ORIGINS),
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   };
 }

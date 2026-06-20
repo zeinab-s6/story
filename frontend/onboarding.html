@@ -12,12 +12,6 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
-  <script>
-    if (!window.StorytellingAuth.requireAuth()) { /* redirect */ }
-    if (window.StorytellingAuth.hasChildProfile()) {
-      window.location.href = "/";
-    }
-  </script>
 </head>
 <body class="onboarding-page">
   <div class="app-bg app-bg--headspace" aria-hidden="true"></div>
@@ -65,6 +59,10 @@
       </div>
 
       <p class="onboarding-error" id="onboarding-error" hidden role="alert"></p>
+
+      <button type="button" class="btn btn--ghost btn--full" id="onboarding-back-login" hidden>
+        بازگشت به ورود
+      </button>
 
       <button type="submit" class="btn btn--primary btn--full onboarding-submit" id="onboarding-submit" disabled>
         ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>

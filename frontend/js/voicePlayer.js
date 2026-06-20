@@ -100,7 +100,15 @@
     if (bufferCache[url]) return Promise.resolve(bufferCache[url]);
     return fetch(url, { headers: authFetchHeaders() })
       .then(function (res) {
-        if (!res.ok) throw new Error("بارگذاری فایل صوتی ناموفق بود.");
+        if (!res.ok) {
+          console.error("[StorytellingAPI] voice buffer HTTP error", {
+            url: url,
+            status: res.status,
+            body: null,
+            error: null,
+          });
+          throw new Error("بارگذاری فایل صوتی ناموفق بود.");
+        }
         return res.arrayBuffer();
       })
       .then(function (arrayBuffer) {
@@ -111,6 +119,18 @@
       .then(function (buffer) {
         bufferCache[url] = buffer;
         return buffer;
+      })
+      .catch(function (err) {
+        if (err && err.message === "بارگذاری فایل صوتی ناموفق بود.") {
+          throw err;
+        }
+        console.error("[StorytellingAPI] voice buffer network error", {
+          url: url,
+          status: null,
+          body: null,
+          error: err,
+        });
+        throw err;
       });
   }
 
