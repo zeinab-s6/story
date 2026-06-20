@@ -58,8 +58,8 @@
   }
 
   function initLoginMusic() {
-    var musicUrl = window.STORYTELLING_CONFIG && window.STORYTELLING_CONFIG.LOGIN_MUSIC;
-    if (!musicUrl || !document.body.classList.contains("login-page")) return;
+    var musicUrl = "images/audio/audio-cuppycake.mp3";
+    if (!document.body.classList.contains("login-page")) return;
 
     loginMusic = new Audio(musicUrl);
     loginMusic.loop = true;

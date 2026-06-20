@@ -113,9 +113,7 @@
   }
 
   function applyLoginBackground() {
-    var imageUrl = window.STORYTELLING_CONFIG && window.STORYTELLING_CONFIG.LOGIN_BG_IMAGE;
-    if (!imageUrl) return;
-
+    var imageUrl = "images/login-bg.png";
     var img = document.getElementById("login-bg-img");
     if (img) {
       img.src = imageUrl;

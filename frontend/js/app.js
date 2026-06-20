@@ -144,13 +144,11 @@
   function $$(sel) { return document.querySelectorAll(sel); }
 
   function getVoiceSampleUrl() {
-    var cfg = window.STORYTELLING_CONFIG || {};
-    return cfg.VOICE_SAMPLE_URL || "assets/voice-sample.wav";
+    return "assets/voice-sample.wav";
   }
 
   function useApiPlayback() {
-    var cfg = window.STORYTELLING_CONFIG || {};
-    return cfg.VOICE_PLAYBACK_MODE === "api";
+    return true;
   }
 
   function syncStoryTextFromPreview() {
@@ -1150,8 +1148,7 @@
   // Future standalone TTS endpoint example:
   // POST /api/tts/generate
   async function generateVoiceFromAPI(text, voice, settings) {
-    var url = window.StorytellingAPI.getBaseUrl() + "/api/tts/generate";
-    var response = await fetch(url, {
+    var response = await fetch(window.API_BASE_URL + "/api/tts/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: text, voice: voice, settings: settings }),

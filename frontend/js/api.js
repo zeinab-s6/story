@@ -2,7 +2,7 @@
   "use strict";
 
   function getBaseUrl() {
-    return window.STORYTELLING_CONFIG?.API_BASE_URL || "https://storytelling-production-d009.up.railway.app";
+    return (window.API_BASE_URL || "").replace(/\/$/, "");
   }
 
   function authHeaders() {
