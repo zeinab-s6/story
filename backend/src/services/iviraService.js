@@ -1,6 +1,6 @@
 import fs from 'fs';
 import env from '../config/env.js';
-import { resolveIviraSpeaker, speakerIdToLabel } from '../data/iviraVoices.js';
+import { resolveIviraSpeaker, speakerIdToLabel } from '../catalog/iviraVoices.js';
 import {
   createSafeAudioFilename,
   getAudioStoragePath,

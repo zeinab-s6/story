@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import env from '../config/env.js';
-import { resolveBuiltinVoice } from '../data/ttsVoices.js';
-import { resolveElevenLabsVoice, listElevenLabsPresetVoices } from '../data/elevenLabsVoices.js';
-import { resolveIviraSpeaker, listIviraPresetVoices, speakerIdToLabel } from '../data/iviraVoices.js';
+import { resolveBuiltinVoice } from '../catalog/ttsVoices.js';
+import { resolveElevenLabsVoice, listElevenLabsPresetVoices } from '../catalog/elevenLabsVoices.js';
+import { resolveIviraSpeaker, listIviraPresetVoices, speakerIdToLabel } from '../catalog/iviraVoices.js';
 import {
   createVoiceProfile,
   updateVoiceProfileStatus,

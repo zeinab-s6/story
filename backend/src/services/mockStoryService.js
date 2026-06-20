@@ -1,5 +1,5 @@
-import { getAgeRange } from '../data/ageRules.js';
-import { STORY_GOALS } from '../data/storyGoals.js';
+import { getAgeRange } from '../catalog/ageRules.js';
+import { STORY_GOALS } from '../catalog/storyGoals.js';
 
 function buildChildName(input) {
   return input.childName || 'دوست کوچولوی ما';

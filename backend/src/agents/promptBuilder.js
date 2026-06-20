@@ -1,5 +1,5 @@
-import { getAgeRange, getAgeRules } from '../data/ageRules.js';
-import { STORY_GOALS } from '../data/storyGoals.js';
+import { getAgeRange, getAgeRules } from '../catalog/ageRules.js';
+import { STORY_GOALS } from '../catalog/storyGoals.js';
 
 export function buildStoryPrompt(input) {
   const ageRange = getAgeRange(input.age);

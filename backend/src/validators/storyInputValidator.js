@@ -1,4 +1,4 @@
-import { VALID_GOALS } from '../data/storyGoals.js';
+import { VALID_GOALS } from '../catalog/storyGoals.js';
 
 const VALID_MOODS = ['calm', 'angry', 'restless', 'sleepy', 'bored', 'sad', 'excited'];
 const VALID_DURATIONS = [2, 3, 5];

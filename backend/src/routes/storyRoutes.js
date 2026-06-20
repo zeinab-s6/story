@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import fs from 'fs';
-import { STORY_GOALS } from '../data/storyGoals.js';
+import { STORY_GOALS } from '../catalog/storyGoals.js';
 import { validateStoryInput } from '../validators/storyInputValidator.js';
 import { validateFeedbackInput } from '../validators/feedbackValidator.js';
 import { createStory } from '../agents/storyAgent.js';
@@ -18,9 +18,9 @@ import {
 } from '../repositories/storyAudioRepository.js';
 import { getVoiceProfileById } from '../repositories/voiceProfileRepository.js';
 import { generateStoryAudio, getContentTypeForFormat } from '../services/ttsService.js';
-import { isValidBuiltinVoice } from '../data/ttsVoices.js';
-import { isValidElevenLabsVoice } from '../data/elevenLabsVoices.js';
-import { isValidIviraSpeaker } from '../data/iviraVoices.js';
+import { isValidBuiltinVoice } from '../catalog/ttsVoices.js';
+import { isValidElevenLabsVoice } from '../catalog/elevenLabsVoices.js';
+import { isValidIviraSpeaker } from '../catalog/iviraVoices.js';
 import env from '../config/env.js';
 
 function isValidRequestedVoice(voice) {

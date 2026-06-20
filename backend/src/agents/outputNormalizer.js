@@ -1,5 +1,5 @@
-import { getAgeRange } from '../data/ageRules.js';
-import { DEFAULT_SAFETY_NOTE } from '../data/safetyRules.js';
+import { getAgeRange } from '../catalog/ageRules.js';
+import { DEFAULT_SAFETY_NOTE } from '../catalog/safetyRules.js';
 
 const VALID_PARENT_EFFORT = ['low', 'medium', 'high'];
 

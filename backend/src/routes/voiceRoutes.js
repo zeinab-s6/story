@@ -7,9 +7,9 @@ import {
   getContentTypeForFormat,
 } from '../services/ttsService.js';
 import { getAudioStoragePath } from '../services/audioStorageService.js';
-import { resolveBuiltinVoice } from '../data/ttsVoices.js';
-import { resolveElevenLabsVoice } from '../data/elevenLabsVoices.js';
-import { resolveIviraSpeaker } from '../data/iviraVoices.js';
+import { resolveBuiltinVoice } from '../catalog/ttsVoices.js';
+import { resolveElevenLabsVoice } from '../catalog/elevenLabsVoices.js';
+import { resolveIviraSpeaker } from '../catalog/iviraVoices.js';
 import {
   voiceProfileUpload,
   mapUploadedVoiceFiles,

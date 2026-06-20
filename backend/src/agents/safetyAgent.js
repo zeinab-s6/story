@@ -2,8 +2,8 @@ import {
   FORBIDDEN_CONCEPTS,
   SMALL_OBJECT_KEYWORDS,
   MAX_STORY_LENGTH,
-} from '../data/safetyRules.js';
-import { getAgeRange } from '../data/ageRules.js';
+} from '../catalog/safetyRules.js';
+import { getAgeRange } from '../catalog/ageRules.js';
 
 function storyToText(story) {
   const parts = [

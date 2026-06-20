@@ -1,4 +1,4 @@
-import { CHILD_GENDERS } from '../data/childAvatars.js';
+import { CHILD_GENDERS } from '../catalog/childAvatars.js';
 
 const SCRIPT_PATTERN = /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi;
 const HTML_TAG_PATTERN = /<[^>]+>/g;

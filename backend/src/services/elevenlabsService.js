@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Blob } from 'node:buffer';
 import env from '../config/env.js';
-import { resolveElevenLabsVoice } from '../data/elevenLabsVoices.js';
+import { resolveElevenLabsVoice } from '../catalog/elevenLabsVoices.js';
 import {
   createSafeAudioFilename,
   getAudioStoragePath,

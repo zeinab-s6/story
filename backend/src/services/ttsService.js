@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import createOpenAIClient from './openaiClient.js';
 import env from '../config/env.js';
-import { resolveBuiltinVoice } from '../data/ttsVoices.js';
+import { resolveBuiltinVoice } from '../catalog/ttsVoices.js';
 import {
   createSafeAudioFilename,
   getAudioStoragePath,

@@ -12,7 +12,7 @@ import {
 } from '../repositories/userRepository.js';
 import { userAuth } from '../middleware/userAuth.js';
 import { validateChildProfileInput } from '../validators/childProfileValidator.js';
-import { getChildAvatarUrl } from '../data/childAvatars.js';
+import { getChildAvatarUrl } from '../catalog/childAvatars.js';
 
 const router = Router();
 
