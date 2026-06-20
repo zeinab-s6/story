@@ -1,0 +1,82 @@
+/* Shared line icons — same style as bottom navigation */
+.app-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: currentColor;
+  line-height: 0;
+}
+
+.app-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.app-icon--xs {
+  width: 14px;
+  height: 14px;
+}
+
+.app-icon--sm {
+  width: 18px;
+  height: 18px;
+}
+
+.app-icon--md {
+  width: 22px;
+  height: 22px;
+}
+
+.app-icon--lg {
+  width: 28px;
+  height: 28px;
+}
+
+.app-icon--nav {
+  width: 22px;
+  height: 22px;
+}
+
+.app-icon--play {
+  width: 16px;
+  height: 16px;
+}
+
+.btn--icon .app-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-menu__icon.app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.mobile-menu__chevron.app-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.story-hero__badge .app-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+}
+
+.player-bar__play .app-icon {
+  color: currentColor;
+}
+
+.advanced-toggle__icon.app-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--transition);
+}
+
+.advanced-toggle[aria-expanded="true"] .advanced-toggle__icon.app-icon {
+  transform: rotate(180deg);
+}

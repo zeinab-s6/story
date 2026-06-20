@@ -1,0 +1,59 @@
+@font-face {
+  font-family: Arad;
+  font-style: normal;
+  font-weight: 400;
+  src: url("../fonts/arad/Arad-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Arad;
+  font-style: normal;
+  font-weight: 500;
+  src: url("../fonts/arad/Arad-Medium.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Arad;
+  font-style: normal;
+  font-weight: 700;
+  src: url("../fonts/arad/Arad-Bold.woff2") format("woff2");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Typographica;
+  font-style: normal;
+  font-weight: 400;
+  src: url("../fonts/typographica/TypoGraphica_demo.otf") format("opentype");
+  font-display: swap;
+}
+
+/* نام برند lalaBye — فاصلهٔ استاندارد بین lala و Bye (نیم‌فاصلهٔ بصری) */
+.brand-name,
+.header__title.brand-name,
+.login-app-name.brand-name,
+.onboarding-logo.brand-name {
+  --brand-word-gap: 0.07em;
+  font-family: Typographica, sans-serif;
+  font-weight: 400;
+  letter-spacing: normal;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+
+.brand-name__lala,
+.brand-name__bye {
+  letter-spacing: normal;
+}
+
+.brand-name__bye {
+  margin-inline-start: var(--brand-word-gap);
+}
+
+.btn .brand-name {
+  font-size: inherit;
+  vertical-align: baseline;
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="onboarding-html">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#FAF5F8">
+  <title>انتخاب فرزند | lalaBye</title>
+  <link rel="icon" href="images/logo-loginpage.png" type="image/png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/icons.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    if (!window.StorytellingAuth.requireAuth()) { /* redirect */ }
+    if (window.StorytellingAuth.hasChildProfile()) {
+      window.location.href = "/";
+    }
+  </script>
+</head>
+<body class="onboarding-page">
+  <div class="app-bg app-bg--headspace" aria-hidden="true"></div>
+
+  <main class="onboarding-shell">
+    <header class="onboarding-header">
+      <div class="onboarding-logo brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></div>
+      <p class="onboarding-welcome">سلام <strong id="onboarding-parent-name">والد</strong></p>
+      <h1 class="onboarding-title">فرزندت رو بشناسیم</h1>
+      <p class="onboarding-subtitle">جنسیت و نام فرزند را وارد کن تا آواتار مخصوصش در داشبورد نمایش داده شود.</p>
+    </header>
+
+    <div class="onboarding-preview" id="onboarding-preview">
+      <div class="avatar-ring avatar-ring--lg">
+        <img id="onboarding-avatar-preview" class="avatar-ring__img" src="images/boy.png" alt="" width="96" height="96">
+      </div>
+      <p class="onboarding-preview__label" id="onboarding-preview-label">یک گزینه را انتخاب کن</p>
+    </div>
+
+    <form class="onboarding-form" id="onboarding-form" novalidate>
+      <div class="form-group onboarding-name-group">
+        <label for="onboarding-child-name">نام فرزند</label>
+        <input type="text" id="onboarding-child-name" name="childName" placeholder="مثلاً ستاره" autocomplete="off" maxlength="40">
+      </div>
+
+      <div class="gender-picker" role="radiogroup" aria-label="جنسیت و آواتار فرزند">
+        <label class="gender-card">
+          <input type="radio" name="childGender" value="boy" required>
+          <span class="gender-card__inner">
+            <span class="avatar-ring avatar-ring--sm">
+              <img src="images/boy.png" alt="" class="avatar-ring__img" width="64" height="64">
+            </span>
+            <span class="gender-card__label">پسر</span>
+          </span>
+        </label>
+        <label class="gender-card">
+          <input type="radio" name="childGender" value="girl" required>
+          <span class="gender-card__inner">
+            <span class="avatar-ring avatar-ring--sm">
+              <img src="images/girl.png" alt="" class="avatar-ring__img" width="64" height="64">
+            </span>
+            <span class="gender-card__label">دختر</span>
+          </span>
+        </label>
+      </div>
+
+      <p class="onboarding-error" id="onboarding-error" hidden role="alert"></p>
+
+      <button type="submit" class="btn btn--primary btn--full onboarding-submit" id="onboarding-submit" disabled>
+        ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>
+      </button>
+    </form>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/onboarding.js"></script>
+</body>
+</html>

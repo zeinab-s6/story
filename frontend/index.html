@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="lalaBye — ساخت قصه کوتاه و امن برای والدین">
+  <meta name="theme-color" content="#FAF5F8">
+  <title>lalaBye | Bedtime Stories</title>
+  <link rel="icon" href="images/logo-loginpage.png" type="image/png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/icons.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/voicePlayer.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    if (!window.StorytellingAuth.requireAuth()) { /* redirect */ }
+    if (!window.StorytellingAuth.requireChildProfile()) { /* redirect */ }
+  </script>
+</head>
+<body class="app-shell" data-mobile-tab="home">
+  <div class="app-bg app-bg--headspace" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="header" id="app-header">
+    <div class="header__inner container">
+      <div class="header__brand">
+        <div class="logo" aria-hidden="true">
+          <img class="logo__img" src="images/logo-loginpage.png" alt="" width="44" height="44">
+        </div>
+        <div class="header__titles">
+          <div class="header__title-row">
+            <h1 class="header__title brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></h1>
+            <span class="header__badge">Bedtime Stories</span>
+          </div>
+          <p class="header__subtitle">قصه بساز، بخوان</p>
+        </div>
+      </div>
+      <div class="header__actions">
+        <button type="button" class="btn btn--ghost btn--icon header__history-btn" id="btn-header-history" aria-label="تاریخچه">
+          <span class="app-icon app-icon--md" data-icon="clock"></span>
+        </button>
+        <nav class="header__nav header__nav--desktop" aria-label="ناوبری اصلی">
+          <button type="button" class="btn btn--ghost" id="btn-new-project">پروژه جدید</button>
+          <button type="button" class="btn btn--ghost" id="btn-history">تاریخچه</button>
+          <button type="button" class="btn btn--ghost" id="btn-settings">تنظیمات</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Story Hero -->
+  <section class="story-hero container" id="story-hero" aria-label="تصویر قصه">
+    <div class="story-hero__art" aria-hidden="true"></div>
+    <div class="story-hero__content">
+      <h2 class="story-hero__title" id="hero-title">یک قصه برای کودکت بساز</h2>
+      <p class="story-hero__subtitle" id="hero-subtitle">وقتی نمی‌دانی چی بگویی، یک قصه کوتاه، امن و آماده اجرا بساز.</p>
+    </div>
+  </section>
+
+  <main class="main container">
+    <!-- Left Panel -->
+    <aside class="panel panel--left" aria-label="تنظیمات قصه و کتابخانه صدا">
+      <!-- Story Setup -->
+      <section class="card glass card--story-setup" aria-labelledby="setup-heading">
+        <div class="card__header">
+          <h2 id="setup-heading" class="card__title">تنظیم قصه</h2>
+          <p class="card__subtitle">وقتی نمی‌دانی چی بگویی، یک قصه کوتاه، امن و آماده اجرا بساز.</p>
+        </div>
+        <form class="story-form" id="story-form" novalidate>
+          <div class="form-group">
+            <label for="childName">نام کودک</label>
+            <input type="text" id="childName" name="childName" placeholder="مثلاً ستاره" autocomplete="off">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="age">سن کودک</label>
+              <select id="age" name="age" required>
+                <option value="">انتخاب کن</option>
+                <option value="0">۰ سال</option>
+                <option value="1">۱ سال</option>
+                <option value="2">۲ سال</option>
+                <option value="3">۳ سال</option>
+                <option value="4" selected>۴ سال</option>
+                <option value="5">۵ سال</option>
+                <option value="6">۶ سال</option>
+                <option value="7">۷ سال</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="durationMinutes">مدت قصه</label>
+              <select id="durationMinutes" name="durationMinutes" required>
+                <option value="2">۲ دقیقه</option>
+                <option value="3" selected>۳ دقیقه</option>
+                <option value="5">۵ دقیقه</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="interest">علاقه کودک</label>
+            <input type="text" id="interest" name="interest" placeholder="مثلاً دایناسور، ماشین، گربه، فضا" required>
+          </div>
+          <div class="form-group">
+            <label for="goal">هدف قصه</label>
+            <select id="goal" name="goal" required>
+              <option value="sleep">خوابیدن</option>
+              <option value="food">غذا خوردن</option>
+              <option value="cleanup">جمع کردن اسباب‌بازی</option>
+              <option value="calm">آرام شدن</option>
+              <option value="waiting">سرگرمی هنگام انتظار</option>
+              <option value="screen-free">کمتر کردن موبایل</option>
+              <option value="brushing">مسواک</option>
+              <option value="bath">حمام</option>
+              <option value="dressing">لباس پوشیدن</option>
+            </select>
+          </div>
+          <div class="goal-chips" id="goal-chips" aria-label="انتخاب سریع هدف"></div>
+          <div class="form-group">
+            <label for="mood">حال کودک</label>
+            <select id="mood" name="mood" required>
+              <option value="calm">آرام</option>
+              <option value="angry">عصبانی</option>
+              <option value="restless" selected>بی‌قرار</option>
+              <option value="sleepy">خواب‌آلود</option>
+              <option value="bored">بی‌حوصله</option>
+              <option value="sad">ناراحت</option>
+              <option value="excited">هیجان‌زده</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="extraContext">توضیح کوتاه برای بهتر شدن قصه</label>
+            <textarea id="extraContext" name="extraContext" rows="3" placeholder="مثلاً امشب خیلی خسته است یا در ماشین بی‌قرار شده."></textarea>
+          </div>
+          <p class="safety-note">
+            این ابزار جایگزین مشاوره تخصصی کودک، پزشکی یا روانشناسی نیست؛ فقط یک پیشنهاد عمومی و کم‌ریسک برای والد ارائه می‌دهد.
+          </p>
+          <label class="checkbox-label">
+            <input type="checkbox" id="safety-checkbox" name="safety">
+            <span>می‌دانم که این قصه فقط پیشنهاد عمومی است و جایگزین نظر متخصص نیست.</span>
+          </label>
+          <div class="form-error" id="form-error" hidden role="alert"></div>
+        </form>
+      </section>
+
+      <!-- Voice Library -->
+      <section class="card glass card--voice-lib" aria-labelledby="voice-lib-heading">
+        <div class="card__header">
+          <h2 id="voice-lib-heading" class="card__title">کتابخانه صدا</h2>
+          <p class="card__subtitle" id="voice-lib-subtitle">در حال دریافت منبع صدا...</p>
+        </div>
+        <div class="voice-search-wrap">
+          <input type="search" id="voice-search" class="voice-search" placeholder="جستجوی صدا..." aria-label="جستجوی صدا">
+        </div>
+        <div class="voice-library" id="voice-library" role="list"></div>
+      </section>
+    </aside>
+
+    <!-- Center Panel -->
+    <section class="panel panel--center" aria-label="ویرایشگر و نتیجه قصه">
+      <div class="last-story-banner card glass" id="last-story-section" hidden>
+        <span class="last-story-banner__label">آخرین قصه ساخته‌شده</span>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-clear-saved">پاک کردن قصه ذخیره‌شده</button>
+      </div>
+
+      <div class="card glass center-card">
+        <div class="mode-tabs" role="tablist" aria-label="حالت‌های قصه">
+          <button type="button" class="mode-tab mode-tab--active" data-tab="story" role="tab">قصه</button>
+          <button type="button" class="mode-tab" data-tab="narration" role="tab">روایت</button>
+          <button type="button" class="mode-tab" data-tab="dialogue" role="tab">گفت‌وگوی شخصیت</button>
+          <button type="button" class="mode-tab" data-tab="bedtime" role="tab">قبل خواب</button>
+        </div>
+
+        <div class="center-meta">
+          <div class="meta-chip"><span class="meta-chip__label">هدف:</span> <span id="summary-goal">—</span></div>
+          <div class="meta-chip"><span class="meta-chip__label">صدا:</span> <span id="summary-voice">—</span></div>
+          <div class="meta-chip"><span class="meta-chip__label">مدت:</span> <span id="summary-duration">—</span></div>
+        </div>
+
+        <div id="center-empty">
+          <div class="editor-wrap">
+            <label for="story-preview" class="sr-only">پیش‌نمایش قصه</label>
+            <textarea id="story-preview" class="story-preview" readonly placeholder="اینجا قصه ساخته‌شده نمایش داده می‌شود. اول اطلاعات کودک را وارد کن و روی «ساخت قصه» بزن."></textarea>
+          </div>
+          <div class="editor-stats">
+            <span id="char-count">۰ کاراکتر</span>
+            <span id="read-duration">۰ دقیقه تخمینی</span>
+          </div>
+          <div class="helper-chips" aria-label="پیشنهادهای ویرایش">
+            <button type="button" class="helper-chip chip">گرم‌ترش کن</button>
+            <button type="button" class="helper-chip chip">آهسته‌تر برای کودک</button>
+            <button type="button" class="helper-chip chip">احساسی‌تر</button>
+            <button type="button" class="helper-chip chip">کوتاه‌تر کن</button>
+          </div>
+        </div>
+
+        <article class="story-result" id="story-result" hidden>
+          <div class="story-cover card" id="story-cover">
+            <div class="story-cover__art" aria-hidden="true"></div>
+            <div class="story-cover__info">
+              <span class="provider-badge" id="meta-provider">—</span>
+              <h2 class="story-result__title" id="story-title">—</h2>
+              <div class="story-meta">
+                <span><strong>شناسه:</strong> <span id="meta-story-id">—</span></span>
+                <span><strong>مدت:</strong> <span id="meta-duration">—</span></span>
+                <span><strong>سن:</strong> <span id="meta-age">—</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="story-section">
+            <h3>جمله شروع برای والد</h3>
+            <p id="story-parent-intro" class="story-block">—</p>
+          </div>
+          <div class="story-section story-section--highlight">
+            <h3>متن قصه</h3>
+            <p id="story-text" class="story-block story-block--main">—</p>
+          </div>
+          <div class="story-section" id="story-interactions-section" hidden>
+            <h3>لحظه‌های تعاملی</h3>
+            <ul id="story-interactions" class="story-list"></ul>
+          </div>
+          <div class="story-section">
+            <h3>حرکت آرام‌سازی</h3>
+            <p id="story-calming" class="story-block">—</p>
+          </div>
+          <div class="story-section">
+            <h3>سؤال آخر</h3>
+            <p id="story-question" class="story-block">—</p>
+          </div>
+          <div class="story-section story-section--safety">
+            <h3>نکته ایمنی</h3>
+            <p id="story-safety" class="story-block">—</p>
+          </div>
+
+          <div id="audio-player-wrap" class="audio-player-wrap" hidden></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Right Panel -->
+    <aside class="panel panel--right" id="settings-panel" aria-label="تنظیمات صدا">
+      <section class="card glass">
+        <div class="card__header">
+          <h2 class="card__title">تنظیمات صدا</h2>
+          <p class="card__subtitle" id="voice-settings-subtitle">در حال دریافت منبع صدا...</p>
+          <p class="voice-mode-status" id="voice-mode-status" hidden></p>
+        </div>
+
+        <div class="sliders">
+          <div class="slider-group">
+            <div class="slider-label">
+              <label for="slider-speed">سرعت</label>
+              <span class="slider-value" id="val-speed">0.85</span>
+            </div>
+            <input type="range" id="slider-speed" min="0.5" max="1.5" step="0.05" value="0.85">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <label for="slider-pitch">زیر و بمی</label>
+              <span class="slider-value" id="val-pitch">0.90</span>
+            </div>
+            <input type="range" id="slider-pitch" min="0.5" max="1.5" step="0.05" value="0.9">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <label for="slider-emotion">احساس</label>
+              <span class="slider-value" id="val-emotion">0.40</span>
+            </div>
+            <input type="range" id="slider-emotion" min="0" max="1" step="0.05" value="0.4">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <label for="slider-clarity">وضوح</label>
+              <span class="slider-value" id="val-clarity">0.90</span>
+            </div>
+            <input type="range" id="slider-clarity" min="0.5" max="1.5" step="0.05" value="0.9">
+          </div>
+        </div>
+
+        <div class="presets" aria-label="پیش‌تنظیم‌های صدا">
+          <button type="button" class="preset-btn preset-btn--active" data-preset="calm">آرام</button>
+          <button type="button" class="preset-btn" data-preset="dramatic">نمایشی</button>
+          <button type="button" class="preset-btn" data-preset="playful">بازیگوش</button>
+          <button type="button" class="preset-btn" data-preset="bedtime">قبل خواب</button>
+        </div>
+
+        <div class="advanced-section">
+          <button type="button" class="advanced-toggle" id="advanced-toggle" aria-expanded="false" aria-controls="advanced-body">
+            تنظیمات پیشرفته
+            <span class="advanced-toggle__icon app-icon app-icon--sm" data-icon="chevronDown"></span>
+          </button>
+          <div class="advanced-body" id="advanced-body" hidden>
+            <div class="slider-group">
+              <div class="slider-label">
+                <label for="adv-pauseBetweenSentences">مکث بین جمله‌ها</label>
+                <span class="slider-value">ثانیه</span>
+              </div>
+              <input type="range" id="adv-pauseBetweenSentences" min="0" max="2" step="0.1" value="0.5">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label">
+                <label for="adv-emphasisLevel">میزان تاکید</label>
+              </div>
+              <input type="range" id="adv-emphasisLevel" min="0" max="1" step="0.05" value="0.6">
+            </div>
+            <label class="toggle-label">
+              <input type="checkbox" id="adv-backgroundAmbience">
+              <span>صدای پس‌زمینه آرام</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="adv-autoNormalize" checked>
+              <span>تنظیم خودکار بلندی صدا</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card glass safety-card">
+        <h3 class="card__title card__title--sm">ایمنی و حریم خصوصی</h3>
+        <p>قصه‌ها برای لحظات روزمره والدین طراحی شده‌اند. اطلاعات کودک فقط برای ساخت همان قصه استفاده می‌شود.</p>
+        <ul class="safety-list">
+          <li>بدون تشخیص پزشکی یا روانشناسی</li>
+          <li>محتوای مناسب سن ۰ تا ۷ سال</li>
+          <li>قابل استفاده آفلاین پس از ساخت صوت</li>
+        </ul>
+      </section>
+    </aside>
+
+    <!-- Mobile Profile Tab -->
+    <aside class="panel panel--profile" id="mobile-profile-panel" aria-label="پروفایل و تنظیمات">
+      <section class="mobile-profile-hero card glass">
+        <div class="mobile-profile-hero__avatars">
+          <div class="mobile-profile-hero__child" id="mobile-profile-child" hidden>
+            <span class="avatar-ring avatar-ring--sm">
+              <img id="mobile-child-avatar-img" src="" alt="" class="avatar-ring__img child-avatar child-avatar--sm">
+            </span>
+          </div>
+        </div>
+        <div>
+          <h2 class="mobile-profile-hero__name" id="mobile-profile-name">کودک</h2>
+          <p class="mobile-profile-hero__tagline" id="mobile-profile-child-label">مدیریت قصه‌ها و حساب کاربری</p>
+        </div>
+      </section>
+
+      <section class="card glass profile-avatar-card" id="profile-avatar-card" aria-label="آواتار فرزند">
+        <h3 class="card__title card__title--sm">آواتار فرزند</h3>
+        <p class="profile-avatar-card__hint">برای تغییر آواتار، یکی از گزینه‌ها را انتخاب کن.</p>
+        <div class="gender-picker gender-picker--compact" role="radiogroup" aria-label="تغییر آواتار فرزند">
+          <label class="gender-card gender-card--compact">
+            <input type="radio" name="profileChildGender" value="boy">
+            <span class="gender-card__inner">
+              <span class="avatar-ring avatar-ring--sm">
+                <img src="images/boy.png" alt="" class="avatar-ring__img" width="64" height="64">
+              </span>
+            </span>
+          </label>
+          <label class="gender-card gender-card--compact">
+            <input type="radio" name="profileChildGender" value="girl">
+            <span class="gender-card__inner">
+              <span class="avatar-ring avatar-ring--sm">
+                <img src="images/girl.png" alt="" class="avatar-ring__img" width="64" height="64">
+              </span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <nav class="mobile-menu card glass" aria-label="منوی پروفایل">
+        <button type="button" class="mobile-menu__item" id="mobile-btn-history">
+          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="history"></span>
+          <span class="mobile-menu__label">تاریخچه قصه‌ها</span>
+          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
+        </button>
+        <button type="button" class="mobile-menu__item" id="mobile-btn-new">
+          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="plus"></span>
+          <span class="mobile-menu__label">پروژه جدید</span>
+          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
+        </button>
+        <button type="button" class="mobile-menu__item" data-mobile-tab-link="voice">
+          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="mic"></span>
+          <span class="mobile-menu__label">تنظیمات صدا</span>
+          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
+        </button>
+        <button type="button" class="mobile-menu__item" data-mobile-tab-link="story">
+          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="book"></span>
+          <span class="mobile-menu__label">ساخت قصه جدید</span>
+          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
+        </button>
+        <button type="button" class="mobile-menu__item mobile-menu__item--danger" id="mobile-btn-logout">
+          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="logout"></span>
+          <span class="mobile-menu__label">خروج از حساب</span>
+          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
+        </button>
+      </nav>
+
+      <section class="card glass safety-card">
+        <h3 class="card__title card__title--sm">ایمنی و حریم خصوصی</h3>
+        <p>قصه‌ها برای لحظات روزمره والدین طراحی شده‌اند. اطلاعات کودک فقط برای ساخت همان قصه استفاده می‌شود.</p>
+        <ul class="safety-list">
+          <li>بدون تشخیص پزشکی یا روانشناسی</li>
+          <li>محتوای مناسب سن ۰ تا ۷ سال</li>
+          <li>قابل استفاده آفلاین پس از ساخت صوت</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav" aria-label="ناوبری موبایل">
+    <button type="button" class="bottom-nav__item bottom-nav__item--active" data-mobile-tab="home" aria-label="خانه">
+      <span class="bottom-nav__icon app-icon app-icon--nav" data-icon="home"></span>
+      <span class="bottom-nav__label">خانه</span>
+    </button>
+    <button type="button" class="bottom-nav__item" data-mobile-tab="story" aria-label="ساخت قصه">
+      <span class="bottom-nav__icon app-icon app-icon--nav" data-icon="book"></span>
+      <span class="bottom-nav__label">قصه</span>
+    </button>
+    <button type="button" class="bottom-nav__item" id="btn-nav-create" aria-label="ساخت">
+      <span class="bottom-nav__icon app-icon app-icon--nav" data-icon="plus"></span>
+      <span class="bottom-nav__label">ساخت</span>
+    </button>
+    <button type="button" class="bottom-nav__item" data-mobile-tab="voice" aria-label="صداها">
+      <span class="bottom-nav__icon app-icon app-icon--nav" data-icon="mic"></span>
+      <span class="bottom-nav__label">صدا</span>
+    </button>
+    <button type="button" class="bottom-nav__item" data-mobile-tab="profile" aria-label="پروفایل">
+      <span class="bottom-nav__icon app-icon app-icon--nav" data-icon="user"></span>
+      <span class="bottom-nav__label">من</span>
+    </button>
+  </nav>
+
+  <!-- Bottom Player -->
+  <footer class="player-bar" id="player-bar">
+    <div class="player-bar__inner container">
+      <div class="player-bar__compact">
+        <button type="button" class="player-bar__play" id="btn-mobile-play" aria-label="پخش">
+          <span class="player-bar__play-icon app-icon app-icon--play" id="mobile-play-icon" data-icon="play"></span>
+        </button>
+        <div class="player-bar__meta">
+          <strong id="player-voice-name-compact">راوی آرام</strong>
+          <span class="player-duration" id="player-duration-compact">—</span>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm player-bar__preview-btn" id="btn-preview-compact" aria-label="پیش‌نمایش">پیش‌نمایش</button>
+      </div>
+
+      <div class="player-bar__desktop">
+      <div class="player-info">
+        <div class="player-voice">
+          <span class="player-voice__label">صدای انتخاب‌شده</span>
+          <strong id="player-voice-name">راوی آرام</strong>
+        </div>
+        <span class="player-duration" id="player-duration">—</span>
+      </div>
+
+      <div class="waveform" id="waveform" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+
+      <div class="player-actions">
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-preview" aria-label="پیش‌نمایش صدا">پیش‌نمایش</button>
+        <button type="button" class="btn btn--primary" id="btn-primary-action">
+          <span id="btn-primary-label">ساخت قصه</span>
+        </button>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-regenerate-audio">ساخت دوباره صدا</button>
+        <button type="button" class="btn btn--ghost btn--sm" id="btn-download" aria-label="دانلود فایل صوتی" hidden disabled>دانلود MP3</button>
+      </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- History Drawer -->
+  <div class="overlay" id="drawer-overlay" aria-hidden="true"></div>
+  <aside class="drawer" id="history-drawer" aria-label="تاریخچه قصه‌ها" aria-hidden="true">
+    <div class="drawer__header">
+      <h2>تاریخچه قصه‌ها</h2>
+      <button type="button" class="btn btn--ghost btn--icon" id="drawer-close" aria-label="بستن">
+        <span class="app-icon app-icon--md" data-icon="close"></span>
+      </button>
+    </div>
+    <div class="drawer__body">
+      <p class="drawer-empty" id="history-empty">هنوز قصه‌ای ساخته نشده. اولین قصه را بساز تا اینجا نمایش داده شود.</p>
+      <div class="history-list" id="history-list"></div>
+    </div>
+    <div class="drawer__footer">
+      <button type="button" class="btn btn--danger btn--sm" id="btn-clear-history">پاک کردن تاریخچه</button>
+    </div>
+  </aside>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="login-html">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="ورود به lalaBye">
+  <meta name="theme-color" content="#87CEEB">
+  <title>ورود | lalaBye</title>
+  <link rel="icon" href="images/logo-loginpage.png" type="image/png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/login-scene.css">
+</head>
+<body class="login-page">
+  <div class="login-bg" id="login-bg" aria-hidden="true">
+    <img class="login-bg__img" id="login-bg-img" src="images/login-bg.png" alt="" decoding="async" fetchpriority="high">
+    <div class="login-scene">
+      <div class="login-scene__sky"></div>
+      <div class="login-scene__sky-night"></div>
+      <div class="login-scene__sun"></div>
+      <div class="login-scene__moon"></div>
+      <div class="login-scene__stars"></div>
+      <div class="login-scene__cloud login-scene__cloud--1"></div>
+      <div class="login-scene__cloud login-scene__cloud--2"></div>
+      <div class="login-scene__hills"></div>
+      <div class="login-scene__room">
+        <span class="login-scene__lamp login-scene__lamp--left" aria-hidden="true"></span>
+        <span class="login-scene__lamp login-scene__lamp--right" aria-hidden="true"></span>
+        <div class="login-scene__window" aria-hidden="true"></div>
+      </div>
+      <div class="login-scene__dim"></div>
+    </div>
+  </div>
+
+  <p class="login-night-hint" id="login-night-hint">وقت خواب نزدیک است…</p>
+
+  <main class="login-shell">
+    <header class="login-brand">
+      <div class="login-logo-ring" aria-hidden="true">
+        <img class="login-logo" src="images/logo-loginpage.png" alt="" width="96" height="96">
+      </div>
+      <h1 class="login-app-name brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></h1>
+      <p class="login-tagline">قصه‌های آرام قبل خواب — برای والد و کودک ۰ تا ۷ سال</p>
+    </header>
+
+    <div class="login-card">
+      <div class="auth-tabs" role="tablist" aria-label="ورود یا ثبت‌نام">
+        <button type="button" class="auth-tab auth-tab--active" id="tab-login" role="tab" aria-selected="true">ورود</button>
+        <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false">ثبت‌نام</button>
+      </div>
+
+      <div class="auth-error" id="login-error" hidden role="alert"></div>
+
+      <div id="panel-login" role="tabpanel">
+        <form id="login-form" class="auth-form" novalidate>
+          <div class="form-group form-group--login">
+            <label for="login-email">ایمیل</label>
+            <input type="email" id="login-email" name="email" placeholder="name@example.com" autocomplete="email" required>
+          </div>
+          <div class="form-group form-group--login">
+            <label for="login-password">رمز عبور</label>
+            <input type="password" id="login-password" name="password" placeholder="حداقل ۶ کاراکتر" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--login">ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span></button>
+        </form>
+      </div>
+
+      <div id="panel-register" hidden role="tabpanel">
+        <form id="register-form" class="auth-form" novalidate>
+          <div class="form-group form-group--login">
+            <label for="register-name">نام شما</label>
+            <input type="text" id="register-name" name="displayName" placeholder="مثلاً بابا" autocomplete="name" required>
+          </div>
+          <div class="form-group form-group--login">
+            <label for="register-email">ایمیل</label>
+            <input type="email" id="register-email" name="email" placeholder="name@example.com" autocomplete="email" required>
+          </div>
+          <div class="form-group form-group--login">
+            <label for="register-password">رمز عبور</label>
+            <input type="password" id="register-password" name="password" placeholder="حداقل ۶ کاراکتر" autocomplete="new-password" required>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--login">ساخت حساب <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span></button>
+        </form>
+      </div>
+
+      <p class="login-footnote">محیطی امن و آرام برای والدین — مناسب لحظات قبل خواب</p>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/login-scene.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
