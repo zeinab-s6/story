@@ -2,8 +2,8 @@
   "use strict";
 
   var AVATARS = {
-    boy: "images/boy.png",
-    girl: "images/girl.png",
+    boy: "images/boy.jpg",
+    girl: "images/girl.jpg",
   };
 
   var LABELS = {
