@@ -27,35 +27,7 @@ function getCustomVoiceCreateFn(client) {
 }
 
 function buildVoiceTagline() {
-  const provider = env.TTS_PROVIDER;
-
-  if (provider === 'ivira') {
-    return '۶ گوینده فارسی آواشو (ویرا) — پیش‌نمایش و روایت قصه.';
-  }
-
-  if (provider === 'elevenlabs') {
-    return 'صدای فارسی ElevenLabs — پیش‌نمایش و روایت قصه.';
-  }
-
-  if (provider === 'mock') {
-    return 'حالت آزمایشی — صدای نمونه برای پیش‌نمایش و روایت قصه.';
-  }
-
-  const baseUrl = (env.OPENAI_TTS_BASE_URL || env.OPENAI_BASE_URL || '').trim();
-  const model = (env.OPENAI_TTS_MODEL || '').trim();
-
-  if (/gapgpt/i.test(baseUrl)) {
-    if (/gemini.*tts/i.test(model)) {
-      return 'صدای فارسی از GapGPT (Gemini TTS) — پیش‌نمایش و روایت قصه.';
-    }
-    return 'صدای فارسی از GapGPT — پیش‌نمایش و روایت قصه.';
-  }
-
-  if (/openai\.com/i.test(baseUrl) || !baseUrl) {
-    return 'صدای فارسی OpenAI TTS — پیش‌نمایش و روایت قصه.';
-  }
-
-  return 'پیش‌نمایش و روایت قصه با صدای سرور.';
+  return 'صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.';
 }
 
 export function getAvailableVoiceMode() {

@@ -158,7 +158,10 @@ router.post('/:id/audio', async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      audio: toPublicStoryAudio(savedAudio, storyId),
+      audio: {
+        ...toPublicStoryAudio(savedAudio, storyId),
+        backgroundAmbienceApplied: audioResult.backgroundAmbienceApplied === true,
+      },
     });
   } catch (err) {
     return next(err);

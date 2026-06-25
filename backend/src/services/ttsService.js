@@ -20,14 +20,27 @@ import { mixNarrationWithBackgroundAmbience } from './backgroundAmbienceService.
 const SUPPORTED_FORMATS = ['mp3', 'wav', 'opus', 'aac', 'flac'];
 
 function buildNarrationText(story) {
-  const parts = [
-    story.parentIntro,
-    story.storyText,
-    story.calmingAction,
-    story.followUpQuestion,
-  ].filter((part) => typeof part === 'string' && part.trim());
+  return typeof story?.storyText === 'string' ? story.storyText.trim() : '';
+}
 
-  return parts.join('\n\n');
+function extractStoryTextForNarration(story, combinedText) {
+  const parts = String(combinedText || '')
+    .split(/\n\n+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const nonStoryParts = new Set(
+    [story?.parentIntro, story?.calmingAction, story?.followUpQuestion]
+      .filter((part) => typeof part === 'string' && part.trim())
+      .map((part) => part.trim()),
+  );
+
+  const storyParts = parts.filter((part) => !nonStoryParts.has(part));
+  if (storyParts.length) {
+    return storyParts.join('\n\n');
+  }
+
+  return buildNarrationText(story);
 }
 
 function normalizeFormat(format) {
@@ -266,7 +279,7 @@ async function generateWithIviraOrFallback({
   }
 }
 
-export async function generateVoicePreview({ voice, format = 'mp3', text }) {
+export async function generateVoicePreview({ voice, format = 'mp3', text, backgroundAmbience = false }) {
   const normalizedFormat = normalizeFormat(format);
   const narrationText = typeof text === 'string' && text.trim()
     ? text.trim()
@@ -274,9 +287,10 @@ export async function generateVoicePreview({ voice, format = 'mp3', text }) {
 
   if (env.TTS_PROVIDER === 'mock') {
     const result = await generateStoryAudioWithMock({ story: {}, format: normalizedFormat });
-    const filename = path.basename(result.audioPath);
+    const mixed = await applyBackgroundAmbienceIfRequested(result, backgroundAmbience);
+    const filename = path.basename(mixed.audioPath);
     return {
-      ...result,
+      ...mixed,
       audioUrl: `/api/voices/preview-file/${filename}`,
     };
   }
@@ -288,10 +302,11 @@ export async function generateVoicePreview({ voice, format = 'mp3', text }) {
         voice,
         format: normalizedFormat,
       });
-      const filename = path.basename(iviraResult.audioPath);
+      const mixed = await applyBackgroundAmbienceIfRequested(iviraResult, backgroundAmbience);
+      const filename = path.basename(mixed.audioPath);
 
       return {
-        ...iviraResult,
+        ...mixed,
         audioUrl: `/api/voices/preview-file/${filename}`,
       };
     } catch (err) {
@@ -310,10 +325,11 @@ export async function generateVoicePreview({ voice, format = 'mp3', text }) {
     voice,
     format: normalizedFormat,
   });
-  const filename = path.basename(openaiResult.audioPath);
+  const mixed = await applyBackgroundAmbienceIfRequested(openaiResult, backgroundAmbience);
+  const filename = path.basename(mixed.audioPath);
 
   return {
-    ...openaiResult,
+    ...mixed,
     audioUrl: `/api/voices/preview-file/${filename}`,
   };
 }
@@ -327,7 +343,7 @@ export async function generateStoryAudio({
   backgroundAmbience = false,
 }) {
   const narrationText = typeof narrationTextOverride === 'string' && narrationTextOverride.trim()
-    ? narrationTextOverride.trim()
+    ? extractStoryTextForNarration(story, narrationTextOverride.trim())
     : buildNarrationText(story);
   const normalizedFormat = normalizeFormat(format);
   const { voice, builtinFallbackVoice, fallbackUsed, voiceType } = resolveVoiceForNarration({

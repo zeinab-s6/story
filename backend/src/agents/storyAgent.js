@@ -104,7 +104,7 @@ export async function createStory(input) {
     throw err;
   }
 
-  const safety = checkStorySafety(story, input.age);
+  const safety = checkStorySafety(story, input.age, input);
   const latencyMs = Date.now() - startTime;
 
   if (!safety.safe) {

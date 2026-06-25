@@ -18,15 +18,46 @@ function storyToText(story) {
   return parts.filter(Boolean).join(' ').toLowerCase();
 }
 
-export function checkStorySafety(story, age) {
+function extractUserProvidedTerms(input) {
+  if (!input) return [];
+
+  const terms = new Set();
+  for (const raw of [input.interest, input.extraContext]) {
+    if (typeof raw !== 'string') continue;
+
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) continue;
+
+    terms.add(normalized);
+    normalized.split(/[,،;|/]+/).forEach((part) => {
+      const token = part.trim();
+      if (token) terms.add(token);
+    });
+  }
+
+  return [...terms];
+}
+
+function removeUserTermsFromText(text, terms) {
+  let result = text;
+  for (const term of terms.sort((a, b) => b.length - a.length)) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(new RegExp(escaped, 'gi'), ' ');
+  }
+  return result;
+}
+
+export function checkStorySafety(story, age, input = null) {
   if (!story || typeof story !== 'object') {
     return { safe: false, reason: 'قصه تولیدشده معتبر نیست.' };
   }
 
   const text = storyToText(story);
+  const userTerms = extractUserProvidedTerms(input);
+  const textForKeywordCheck = removeUserTermsFromText(text, userTerms);
 
   for (const forbidden of FORBIDDEN_CONCEPTS) {
-    if (text.includes(forbidden.toLowerCase())) {
+    if (textForKeywordCheck.includes(forbidden.toLowerCase())) {
       return {
         safe: false,
         reason: `محتوای ناامن شناسایی شد: "${forbidden}"`,
@@ -36,7 +67,7 @@ export function checkStorySafety(story, age) {
 
   if (age < 3) {
     for (const keyword of SMALL_OBJECT_KEYWORDS) {
-      if (text.includes(keyword.toLowerCase())) {
+      if (textForKeywordCheck.includes(keyword.toLowerCase())) {
         return {
           safe: false,
           reason: `برای این سن، اشاره به "${keyword}" مناسب نیست.`,
