@@ -87,7 +87,6 @@
 
   const state = {
     selectedVoiceId: "nova",
-    selectedModeTab: "story",
     selectedPreset: "calm",
     storyResult: null,
     storyId: null,
@@ -114,6 +113,7 @@
   let createProgressTimer = null;
   let createHintTimer = null;
   let createProgressValue = 0;
+  let storyGenerationAbort = null;
 
   var CREATE_LOADING_HINTS = [
     "لطفاً چند لحظه صبر کنید...",
@@ -201,6 +201,27 @@
       clearInterval(createHintTimer);
       createHintTimer = null;
     }
+  }
+
+  function delayWithSignal(ms, signal) {
+    return new Promise(function (resolve, reject) {
+      if (signal && signal.aborted) {
+        reject(new DOMException("Aborted", "AbortError"));
+        return;
+      }
+      var timer = setTimeout(resolve, ms);
+      if (signal) {
+        signal.addEventListener("abort", function () {
+          clearTimeout(timer);
+          reject(new DOMException("Aborted", "AbortError"));
+        }, { once: true });
+      }
+    });
+  }
+
+  function cancelStoryGeneration() {
+    if (!state.isGeneratingStory || !storyGenerationAbort) return;
+    storyGenerationAbort.abort();
   }
 
   function handleNavCreateClick() {
@@ -920,12 +941,6 @@
     });
   }
 
-  function renderModeTabs() {
-    $$(".mode-tab").forEach(function (tab) {
-      tab.classList.toggle("mode-tab--active", tab.dataset.tab === state.selectedModeTab);
-    });
-  }
-
   function renderStoryCard() {
     var emptyEl = $("#center-empty");
     var resultEl = $("#story-result");
@@ -1222,43 +1237,6 @@
     if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function confirmNewProject() {
-    if (!state.storyResult && !getFormData().interest) return;
-    if (window.confirm("پروژه جدید شروع شود؟ اطلاعات فعلی پاک می‌شود.")) {
-      resetForm();
-    }
-  }
-
-  function resetForm() {
-    ["childName", "interest", "extraContext"].forEach(function (id) {
-      var el = $("#" + id);
-      if (el) el.value = "";
-    });
-    saveChildName("");
-    var age = $("#age"); if (age) age.value = "4";
-    var goal = $("#goal"); if (goal) goal.value = "sleep";
-    var mood = $("#mood"); if (mood) mood.value = "restless";
-    var dur = $("#durationMinutes"); if (dur) dur.value = "3";
-    var cb = $("#safety-checkbox"); if (cb) cb.checked = false;
-    state.storyResult = null;
-    state.storyId = null;
-    state.provider = null;
-    state.audioResult = null;
-    state.audioFullUrl = null;
-    state.audioVoiceId = null;
-    state.isPlaying = false;
-    stopVoicePlayback();
-    if (audioElement) audioElement.pause();
-    renderGoalChips();
-    renderStoryCard();
-    renderAudioPlayer();
-    updateSummaries();
-    updatePrimaryButton();
-    clearError();
-    syncChildDisplay();
-    showToast("پروژه جدید آماده است.", "success");
-  }
-
   function getMockStory(data) {
     var name = data.childName || "کودک";
     return {
@@ -1297,6 +1275,8 @@
     var data = getFormData();
     state.isGeneratingStory = true;
     updatePrimaryButton();
+    storyGenerationAbort = new AbortController();
+    var signal = storyGenerationAbort.signal;
     if (options.fromCreatePanel && isMobileLayout()) {
       openCreatePanel("loading");
       setMobileTab("create");
@@ -1306,11 +1286,12 @@
     try {
       var result;
       if (mockFrontendMode) {
-        await new Promise(function (r) { setTimeout(r, 800); });
+        await delayWithSignal(800, signal);
         result = getMockStory(data);
       } else {
-        result = await window.StorytellingAPI.generateStory(data);
+        result = await window.StorytellingAPI.generateStory(data, { signal: signal });
       }
+      if (signal.aborted) return;
       if (!result.success) throw new Error(result.error || "ساخت قصه ناموفق بود.");
       state.storyId = result.storyId;
       state.provider = result.provider;
@@ -1345,6 +1326,15 @@
         if (isMobileLayout()) setMobileTab("home");
       }
     } catch (e) {
+      if (e.name === "AbortError") {
+        if (options.fromCreatePanel && isMobileLayout()) {
+          stopCreateProgress();
+          closeCreatePanel();
+          setMobileTab("story");
+          showToast("ساخت قصه متوقف شد.", "info");
+        }
+        return;
+      }
       var msg = "ساخت قصه ناموفق بود. لطفاً دوباره تلاش کن.";
       if (e.message === "Failed to fetch" || e.name === "TypeError") {
         msg = "اتصال به سرور برقرار نشد. مطمئن شو بک‌اند روی آدرس درست اجرا شده است.";
@@ -1360,6 +1350,7 @@
         showError(msg);
       }
     } finally {
+      storyGenerationAbort = null;
       state.isGeneratingStory = false;
       updatePrimaryButton();
     }
@@ -1631,21 +1622,6 @@
   }
 
   function bindEvents() {
-    $$(".mode-tab").forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        state.selectedModeTab = tab.dataset.tab;
-        renderModeTabs();
-      });
-    });
-
-    $$(".helper-chip").forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        chip.classList.add("chip--pulse");
-        showToast("این گزینه به‌زودی به API متصل می‌شود.", "info");
-        setTimeout(function () { chip.classList.remove("chip--pulse"); }, 600);
-      });
-    });
-
     var voiceSearch = $("#voice-search");
     if (voiceSearch) {
       voiceSearch.addEventListener("input", function () { renderVoiceCards(voiceSearch.value); });
@@ -1729,7 +1705,6 @@
       });
     });
 
-    $("#btn-new-project") && $("#btn-new-project").addEventListener("click", confirmNewProject);
     $("#btn-history") && $("#btn-history").addEventListener("click", openHistoryDrawer);
     $("#btn-settings") && $("#btn-settings").addEventListener("click", scrollToSettings);
     $("#drawer-close") && $("#drawer-close").addEventListener("click", closeHistoryDrawer);
@@ -1784,9 +1759,10 @@
       setMobileTab("story");
     });
 
+    $("#btn-cancel-story") && $("#btn-cancel-story").addEventListener("click", cancelStoryGeneration);
+
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
-    $("#mobile-btn-new") && $("#mobile-btn-new").addEventListener("click", confirmNewProject);
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
     });
@@ -1846,7 +1822,6 @@
     }
     renderGoalChips();
     renderVoiceCards();
-    renderModeTabs();
     renderSliders();
     loadHistory();
     loadLastStory();

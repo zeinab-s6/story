@@ -43,7 +43,6 @@
           <span class="app-icon app-icon--md" data-icon="clock"></span>
         </button>
         <nav class="header__nav header__nav--desktop" aria-label="ناوبری اصلی">
-          <button type="button" class="btn btn--ghost" id="btn-new-project">پروژه جدید</button>
           <button type="button" class="btn btn--ghost" id="btn-history">تاریخچه</button>
           <button type="button" class="btn btn--ghost" id="btn-settings">تنظیمات</button>
         </nav>
@@ -165,13 +164,6 @@
       </div>
 
       <div class="card glass center-card">
-        <div class="mode-tabs" role="tablist" aria-label="حالت‌های قصه">
-          <button type="button" class="mode-tab mode-tab--active" data-tab="story" role="tab">قصه</button>
-          <button type="button" class="mode-tab" data-tab="narration" role="tab">روایت</button>
-          <button type="button" class="mode-tab" data-tab="dialogue" role="tab">گفت‌وگوی شخصیت</button>
-          <button type="button" class="mode-tab" data-tab="bedtime" role="tab">قبل خواب</button>
-        </div>
-
         <div class="center-meta">
           <div class="meta-chip"><span class="meta-chip__label">هدف:</span> <span id="summary-goal">—</span></div>
           <div class="meta-chip"><span class="meta-chip__label">صدا:</span> <span id="summary-voice">—</span></div>
@@ -186,12 +178,6 @@
           <div class="editor-stats">
             <span id="char-count">۰ کاراکتر</span>
             <span id="read-duration">۰ دقیقه تخمینی</span>
-          </div>
-          <div class="helper-chips" aria-label="پیشنهادهای ویرایش">
-            <button type="button" class="helper-chip chip">گرم‌ترش کن</button>
-            <button type="button" class="helper-chip chip">آهسته‌تر برای کودک</button>
-            <button type="button" class="helper-chip chip">احساسی‌تر</button>
-            <button type="button" class="helper-chip chip">کوتاه‌تر کن</button>
           </div>
         </div>
 
@@ -373,11 +359,6 @@
           <span class="mobile-menu__label">تاریخچه قصه‌ها</span>
           <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
         </button>
-        <button type="button" class="mobile-menu__item" id="mobile-btn-new">
-          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="plus"></span>
-          <span class="mobile-menu__label">پروژه جدید</span>
-          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
-        </button>
         <button type="button" class="mobile-menu__item" data-mobile-tab-link="voice">
           <span class="mobile-menu__icon app-icon app-icon--md" data-icon="mic"></span>
           <span class="mobile-menu__label">تنظیمات صدا</span>
@@ -424,6 +405,7 @@
             <div class="create-progress__bar" id="create-progress-bar"></div>
           </div>
           <span class="create-progress__pct" id="create-progress-pct">۰٪</span>
+          <button type="button" class="btn btn--ghost btn--sm create-panel__cancel" id="btn-cancel-story">توقف ساخت</button>
         </div>
       </div>
     </section>

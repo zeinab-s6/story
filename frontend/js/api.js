@@ -36,6 +36,7 @@
         },
       });
     } catch (err) {
+      if (err.name === "AbortError") throw err;
       logFetchFailure("network error", { url: url, status: null, body: null, error: err });
       throw err;
     }
@@ -110,10 +111,11 @@
     });
   }
 
-  async function generateStory(payload) {
+  async function generateStory(payload, options) {
     return request(apiUrl("/api/stories/generate"), {
       method: "POST",
       body: JSON.stringify(payload),
+      signal: options && options.signal,
     });
   }
 
