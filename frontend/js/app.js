@@ -4,7 +4,7 @@
   // To test without backend, you can temporarily enable mockFrontendMode = true.
   const mockFrontendMode = false;
 
-  const VOICE_TAGLINE_FALLBACK = "در حال دریافت منبع صدا...";
+  const VOICE_TAGLINE_FALLBACK = "صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.";
 
   const STORAGE_KEYS = {
     sessionId: "storytelling_session_id",
@@ -110,6 +110,19 @@
   let audioElement = null;
   let storyAudioBlobUrl = null;
   let audioHydrationToken = 0;
+  let backgroundAmbienceElement = null;
+  let createProgressTimer = null;
+  let createHintTimer = null;
+  let createProgressValue = 0;
+
+  var CREATE_LOADING_HINTS = [
+    "لطفاً چند لحظه صبر کنید...",
+    "قصه متناسب با سن و علایق کودک نوشته می‌شود...",
+    "تقریباً آماده است...",
+  ];
+
+  var BACKGROUND_AMBIENCE_URL = "images/audio/source.mp3";
+  var BACKGROUND_AMBIENCE_VOLUME = 0.14;
 
   function isMobileLayout() {
     return document.body.classList.contains("app-shell");
@@ -124,6 +137,95 @@
     $$(".bottom-nav__item[data-mobile-tab]").forEach(function (item) {
       item.classList.toggle("bottom-nav__item--active", item.dataset.mobileTab === mobileTab);
     });
+    var navCreate = $("#btn-nav-create");
+    if (navCreate) {
+      navCreate.classList.toggle("bottom-nav__item--active", mobileTab === "create");
+    }
+  }
+
+  function openCreatePanel(mode) {
+    var panel = $("#create-panel");
+    var empty = $("#create-empty");
+    var loading = $("#create-loading");
+    if (!panel || !empty || !loading) return;
+    panel.hidden = false;
+    empty.hidden = mode !== "empty";
+    loading.hidden = mode !== "loading";
+  }
+
+  function closeCreatePanel() {
+    var panel = $("#create-panel");
+    if (panel) panel.hidden = true;
+  }
+
+  function updateCreateProgressUI(value) {
+    var bar = $("#create-progress-bar");
+    var pct = $("#create-progress-pct");
+    var progress = $("#create-progress");
+    var rounded = Math.round(value);
+    if (bar) bar.style.width = rounded + "%";
+    if (pct) pct.textContent = rounded.toLocaleString("fa-IR") + "٪";
+    if (progress) progress.setAttribute("aria-valuenow", String(rounded));
+  }
+
+  function startCreateProgress() {
+    stopCreateProgress();
+    createProgressValue = 0;
+    updateCreateProgressUI(0);
+    var hintIndex = 0;
+    var hintEl = $("#create-loading-hint");
+    if (hintEl) hintEl.textContent = CREATE_LOADING_HINTS[0];
+    createHintTimer = setInterval(function () {
+      hintIndex = (hintIndex + 1) % CREATE_LOADING_HINTS.length;
+      if (hintEl) hintEl.textContent = CREATE_LOADING_HINTS[hintIndex];
+    }, 3200);
+    createProgressTimer = setInterval(function () {
+      if (createProgressValue >= 90) return;
+      var step = createProgressValue < 45 ? 2.5 : createProgressValue < 75 ? 1.2 : 0.6;
+      createProgressValue = Math.min(90, createProgressValue + step);
+      updateCreateProgressUI(createProgressValue);
+    }, 450);
+  }
+
+  function completeCreateProgress() {
+    stopCreateProgress();
+    updateCreateProgressUI(100);
+  }
+
+  function stopCreateProgress() {
+    if (createProgressTimer) {
+      clearInterval(createProgressTimer);
+      createProgressTimer = null;
+    }
+    if (createHintTimer) {
+      clearInterval(createHintTimer);
+      createHintTimer = null;
+    }
+  }
+
+  function handleNavCreateClick() {
+    if (!isMobileLayout()) {
+      handlePrimaryAction();
+      return;
+    }
+    if (state.isGeneratingStory) {
+      openCreatePanel("loading");
+      setMobileTab("create");
+      return;
+    }
+    if (state.storyResult) {
+      handlePrimaryAction();
+      return;
+    }
+    var settingsError = validateForm();
+    if (settingsError) {
+      openCreatePanel("empty");
+      setMobileTab("create");
+      return;
+    }
+    openCreatePanel("loading");
+    setMobileTab("create");
+    handleGenerateStory({ fromCreatePanel: true });
   }
 
   function syncMobilePlayerMeta() {
@@ -149,6 +251,44 @@
 
   function useApiPlayback() {
     return true;
+  }
+
+  function shouldUseClientBackgroundAmbience() {
+    return !!state.advanced.backgroundAmbience
+      && !(state.audioResult && state.audioResult.backgroundAmbienceApplied);
+  }
+
+  function getVoicePlaybackOptions() {
+    return {
+      backgroundAmbience: shouldUseClientBackgroundAmbience(),
+      backgroundAmbienceApplied: !!(state.audioResult && state.audioResult.backgroundAmbienceApplied),
+    };
+  }
+
+  function stopNativeBackgroundAmbience() {
+    if (backgroundAmbienceElement) {
+      backgroundAmbienceElement.pause();
+      backgroundAmbienceElement.currentTime = 0;
+    }
+  }
+
+  function startNativeBackgroundAmbience() {
+    if (!shouldUseClientBackgroundAmbience()) {
+      stopNativeBackgroundAmbience();
+      return;
+    }
+    if (!backgroundAmbienceElement) {
+      backgroundAmbienceElement = new Audio(BACKGROUND_AMBIENCE_URL);
+      backgroundAmbienceElement.loop = true;
+      backgroundAmbienceElement.preload = "auto";
+      backgroundAmbienceElement.volume = BACKGROUND_AMBIENCE_VOLUME;
+    }
+    backgroundAmbienceElement.play().catch(function () { /* autoplay blocked */ });
+  }
+
+  function syncNativeBackgroundAmbience(playing) {
+    if (playing) startNativeBackgroundAmbience();
+    else stopNativeBackgroundAmbience();
   }
 
   function syncStoryTextFromPreview() {
@@ -184,10 +324,12 @@
         if (!ready || !audioElement) return false;
         return audioElement.play()
           .then(function () {
+            syncNativeBackgroundAmbience(true);
             syncPlayingState(true);
             return true;
           })
           .catch(function () {
+            syncNativeBackgroundAmbience(false);
             syncPlayingState(false);
             showToast("برای پخش، دکمه پلی پلیر را بزن.", "info");
             return false;
@@ -354,9 +496,18 @@
       '</div>';
     audioElement = $("#story-audio");
     if (audioElement) {
-      audioElement.addEventListener("play", function () { syncPlayingState(true); });
-      audioElement.addEventListener("pause", function () { syncPlayingState(false); });
-      audioElement.addEventListener("ended", function () { syncPlayingState(false); });
+      audioElement.addEventListener("play", function () {
+        syncNativeBackgroundAmbience(true);
+        syncPlayingState(true);
+      });
+      audioElement.addEventListener("pause", function () {
+        syncNativeBackgroundAmbience(false);
+        syncPlayingState(false);
+      });
+      audioElement.addEventListener("ended", function () {
+        syncNativeBackgroundAmbience(false);
+        syncPlayingState(false);
+      });
     }
     var inlineDownload = $("#btn-download-inline");
     if (inlineDownload) inlineDownload.addEventListener("click", handleDownload);
@@ -412,7 +563,7 @@
       showError("پخش‌کننده صدا در دسترس نیست.");
       return Promise.resolve(false);
     }
-    return window.VoicePlayer.toggle(url, state.sliders)
+    return window.VoicePlayer.toggle(url, state.sliders, getVoicePlaybackOptions())
       .then(function (playing) {
         syncPlayingState(playing);
         return playing;
@@ -426,6 +577,7 @@
 
   function stopVoicePlayback() {
     if (window.VoicePlayer) window.VoicePlayer.stop();
+    stopNativeBackgroundAmbience();
     syncPlayingState(false);
   }
 
@@ -445,13 +597,26 @@
       selected.backendVoice,
       "wav",
       previewText || undefined,
+      { backgroundAmbience: !!state.advanced.backgroundAmbience },
     )
       .then(function (result) {
         if (!result.success || !result.audio || !result.audio.audioUrl) {
           throw new Error("پیش‌نمایش صدا از سرور دریافت نشد.");
         }
         var url = window.StorytellingAPI.buildFullAudioUrl(result.audio.audioUrl);
-        return playWithVoiceSettings(url);
+        var previewOptions = {
+          backgroundAmbience: !!state.advanced.backgroundAmbience && !result.audio.backgroundAmbienceApplied,
+          backgroundAmbienceApplied: !!result.audio.backgroundAmbienceApplied,
+        };
+        if (!window.VoicePlayer) {
+          showError("پخش‌کننده صدا در دسترس نیست.");
+          return false;
+        }
+        return window.VoicePlayer.toggle(url, state.sliders, previewOptions)
+          .then(function (playing) {
+            syncPlayingState(playing);
+            return playing;
+          });
       })
       .catch(function (e) {
         showError(formatApiError(e, "پیش‌نمایش صدا ناموفق بود."));
@@ -1116,13 +1281,27 @@
     };
   }
 
-  async function handleGenerateStory() {
+  async function handleGenerateStory(options) {
+    options = options || {};
     clearError();
     var err = validateForm();
-    if (err) { showError(err); return; }
+    if (err) {
+      if (options.fromCreatePanel && isMobileLayout()) {
+        openCreatePanel("empty");
+        setMobileTab("create");
+      } else {
+        showError(err);
+      }
+      return;
+    }
     var data = getFormData();
     state.isGeneratingStory = true;
     updatePrimaryButton();
+    if (options.fromCreatePanel && isMobileLayout()) {
+      openCreatePanel("loading");
+      setMobileTab("create");
+      startCreateProgress();
+    }
 
     try {
       var result;
@@ -1154,8 +1333,17 @@
         savedAt: new Date().toISOString(),
         formSnapshot: getFormData(),
       });
-      showToast("قصه با موفقیت ساخته شد!", "success");
-      if (isMobileLayout()) setMobileTab("home");
+      if (options.fromCreatePanel && isMobileLayout()) {
+        completeCreateProgress();
+        showToast("قصه با موفقیت ساخته شد!", "success");
+        setTimeout(function () {
+          closeCreatePanel();
+          setMobileTab("home");
+        }, 500);
+      } else {
+        showToast("قصه با موفقیت ساخته شد!", "success");
+        if (isMobileLayout()) setMobileTab("home");
+      }
     } catch (e) {
       var msg = "ساخت قصه ناموفق بود. لطفاً دوباره تلاش کن.";
       if (e.message === "Failed to fetch" || e.name === "TypeError") {
@@ -1163,7 +1351,14 @@
       } else if (e.message) {
         msg = e.message;
       }
-      showError(msg);
+      if (options.fromCreatePanel && isMobileLayout()) {
+        stopCreateProgress();
+        closeCreatePanel();
+        setMobileTab("story");
+        showToast(msg, "error");
+      } else {
+        showError(msg);
+      }
     } finally {
       state.isGeneratingStory = false;
       updatePrimaryButton();
@@ -1315,8 +1510,10 @@
       }
       if (state.isPlaying) {
         audioElement.pause();
+        syncNativeBackgroundAmbience(false);
       } else {
         audioElement.play().catch(function () {
+          syncNativeBackgroundAmbience(false);
           showToast("برای پخش، دکمه پلی پلیر را بزن.", "info");
         });
       }
@@ -1523,6 +1720,7 @@
       input.addEventListener("change", function () {
         state.advanced[key] = input.type === "checkbox" ? input.checked : Number(input.value);
         if (key === "backgroundAmbience" && state.audioFullUrl) {
+          stopVoicePlayback();
           state.audioFullUrl = null;
           state.audioResult = null;
           renderAudioPlayer();
@@ -1566,18 +1764,25 @@
 
     $$(".bottom-nav__item[data-mobile-tab]").forEach(function (item) {
       item.addEventListener("click", function () {
+        closeCreatePanel();
         setMobileTab(item.dataset.mobileTab);
       });
     });
 
     $$("[data-mobile-tab-link]").forEach(function (item) {
       item.addEventListener("click", function () {
+        closeCreatePanel();
         setMobileTab(item.dataset.mobileTabLink);
       });
     });
 
     var navCreate = $("#btn-nav-create");
-    if (navCreate) navCreate.addEventListener("click", handlePrimaryAction);
+    if (navCreate) navCreate.addEventListener("click", handleNavCreateClick);
+
+    $("#btn-go-story-settings") && $("#btn-go-story-settings").addEventListener("click", function () {
+      closeCreatePanel();
+      setMobileTab("story");
+    });
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);

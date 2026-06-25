@@ -510,7 +510,7 @@ body.drawer-open {
 }
 
 .voice-card--selected {
-  border-color: var(--accent);
+  border-color: var(--glass-border);
   background: #FFF0F6;
   box-shadow: 0 4px 20px rgba(255, 107, 44, 0.12);
 }
@@ -1779,6 +1779,126 @@ body.app-shell[data-mobile-tab="profile"] .panel--profile {
   animation: mobileScreenIn 0.28s ease;
 }
 
+body.app-shell .create-panel {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100dvh - var(--header-h) - var(--bottom-nav-h) - var(--mobile-player-h) - 32px);
+  padding: 16px;
+  animation: mobileScreenIn 0.28s ease;
+}
+
+body.app-shell[data-mobile-tab="create"] .create-panel {
+  display: flex !important;
+}
+
+body.app-shell[data-mobile-tab="create"] .story-hero,
+body.app-shell[data-mobile-tab="create"] .panel--center,
+body.app-shell[data-mobile-tab="create"] .panel--left,
+body.app-shell[data-mobile-tab="create"] .panel--profile {
+  display: none !important;
+}
+
+.create-panel__card {
+  width: min(320px, calc(100vw - 48px));
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  border: 2px solid rgba(249, 168, 212, 0.75);
+  border-radius: var(--radius-md);
+  background: linear-gradient(165deg, #FFFBFD 0%, #FFF5F9 50%, #FCE7F3 100%);
+  box-shadow: 0 8px 32px rgba(219, 39, 119, 0.1);
+}
+
+.create-panel__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  text-align: center;
+}
+
+.create-panel__state[hidden] {
+  display: none !important;
+}
+
+.create-panel__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid rgba(249, 168, 212, 0.5);
+}
+
+.create-panel__icon img {
+  opacity: 0.55;
+  filter: grayscale(0.2);
+}
+
+.create-panel__message {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.7;
+  color: #9D4A72;
+  max-width: 22ch;
+}
+
+.create-panel__spinner {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid rgba(249, 168, 212, 0.35);
+  border-top-color: var(--accent);
+  animation: createSpin 0.9s linear infinite;
+}
+
+.create-panel__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #9D4A72;
+  line-height: 1.6;
+}
+
+.create-panel__hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+  min-height: 2.5em;
+}
+
+.create-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(249, 168, 212, 0.28);
+  overflow: hidden;
+}
+
+.create-progress__bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #F9A8D4, #DB2777);
+  transition: width 0.45s ease;
+}
+
+.create-progress__pct {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+@keyframes createSpin {
+  to { transform: rotate(360deg); }
+}
+
 body.app-shell .main {
   grid-template-columns: 1fr;
   gap: 12px;
@@ -2153,6 +2273,17 @@ body.app-shell .chip {
   body[data-mobile-tab="profile"] .panel--profile {
     display: flex !important;
     animation: mobileScreenIn 0.28s ease;
+  }
+
+  body[data-mobile-tab="create"] .create-panel {
+    display: flex !important;
+  }
+
+  body[data-mobile-tab="create"] .story-hero,
+  body[data-mobile-tab="create"] .panel--center,
+  body[data-mobile-tab="create"] .panel--left,
+  body[data-mobile-tab="create"] .panel--profile {
+    display: none !important;
   }
 
   .main {
@@ -2719,18 +2850,6 @@ body.app-shell .chip {
   font-weight: 700;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(252, 231, 243, 0.88) 100%);
   box-shadow: 0 2px 14px rgba(219, 39, 119, 0.12);
-}
-
-.bottom-nav__item--active::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 22px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent-2), var(--accent));
 }
 
 .bottom-nav__item--active .bottom-nav__icon img,

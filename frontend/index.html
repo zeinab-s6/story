@@ -148,7 +148,7 @@
       <section class="card glass card--voice-lib" aria-labelledby="voice-lib-heading">
         <div class="card__header">
           <h2 id="voice-lib-heading" class="card__title">کتابخانه صدا</h2>
-          <p class="card__subtitle" id="voice-lib-subtitle">در حال دریافت منبع صدا...</p>
+          <p class="card__subtitle" id="voice-lib-subtitle">صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.</p>
         </div>
         <div class="voice-search-wrap">
           <input type="search" id="voice-search" class="voice-search" placeholder="جستجوی صدا..." aria-label="جستجوی صدا">
@@ -244,7 +244,7 @@
       <section class="card glass">
         <div class="card__header">
           <h2 class="card__title">تنظیمات صدا</h2>
-          <p class="card__subtitle" id="voice-settings-subtitle">در حال دریافت منبع صدا...</p>
+          <p class="card__subtitle" id="voice-settings-subtitle">صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.</p>
           <p class="voice-mode-status" id="voice-mode-status" hidden></p>
         </div>
 
@@ -405,6 +405,28 @@
         </ul>
       </section>
     </aside>
+
+    <!-- Create Panel (mobile) -->
+    <section class="create-panel" id="create-panel" aria-label="ساخت قصه" hidden>
+      <div class="create-panel__card" id="create-panel-card">
+        <div class="create-panel__state create-panel__state--empty" id="create-empty">
+          <span class="create-panel__icon" aria-hidden="true">
+            <img src="images/book.png" alt="" width="40" height="40" decoding="async">
+          </span>
+          <p class="create-panel__message">در بخش قصه تنظیمات قصه را تکمیل کن</p>
+          <button type="button" class="btn btn--ghost btn--sm" id="btn-go-story-settings">رفتن به بخش قصه</button>
+        </div>
+        <div class="create-panel__state create-panel__state--loading" id="create-loading" hidden>
+          <div class="create-panel__spinner" aria-hidden="true"></div>
+          <p class="create-panel__title">در حال آماده‌سازی قصه کودک شما</p>
+          <p class="create-panel__hint" id="create-loading-hint">لطفاً چند لحظه صبر کنید...</p>
+          <div class="create-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="create-progress">
+            <div class="create-progress__bar" id="create-progress-bar"></div>
+          </div>
+          <span class="create-progress__pct" id="create-progress-pct">۰٪</span>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Mobile Bottom Nav -->

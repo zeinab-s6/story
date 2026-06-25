@@ -10,6 +10,11 @@
   var playingUrl = null;
   var isPlaying = false;
   var onStateChange = null;
+  var backgroundSourceNode = null;
+  var backgroundGainNode = null;
+
+  var BACKGROUND_AUDIO_URL = "images/audio/source.mp3";
+  var BACKGROUND_AUDIO_VOLUME = 0.14;
 
   function getContext() {
     if (!audioContext) {
@@ -73,7 +78,43 @@
     if (typeof onStateChange === "function") onStateChange(isPlaying);
   }
 
+  function stopBackgroundAmbience() {
+    if (backgroundSourceNode) {
+      try {
+        backgroundSourceNode.onended = null;
+        backgroundSourceNode.stop(0);
+      } catch (e) {
+        /* already stopped */
+      }
+      backgroundSourceNode.disconnect();
+      backgroundSourceNode = null;
+    }
+    if (backgroundGainNode) {
+      backgroundGainNode.disconnect();
+      backgroundGainNode = null;
+    }
+  }
+
+  function startBackgroundAmbience(ctx) {
+    stopBackgroundAmbience();
+    return loadBuffer(BACKGROUND_AUDIO_URL).then(function (buffer) {
+      backgroundSourceNode = ctx.createBufferSource();
+      backgroundGainNode = ctx.createGain();
+      backgroundSourceNode.buffer = buffer;
+      backgroundSourceNode.loop = true;
+      backgroundGainNode.gain.value = BACKGROUND_AUDIO_VOLUME;
+      backgroundSourceNode.connect(backgroundGainNode);
+      backgroundGainNode.connect(ctx.destination);
+      backgroundSourceNode.start(0);
+    });
+  }
+
+  function wantsClientBackgroundAmbience(options) {
+    return !!(options && options.backgroundAmbience && !options.backgroundAmbienceApplied);
+  }
+
   function stopInternal() {
+    stopBackgroundAmbience();
     if (sourceNode) {
       try {
         sourceNode.onended = null;
@@ -134,7 +175,7 @@
       });
   }
 
-  function play(url, settings) {
+  function play(url, settings, options) {
     var ctx = getContext();
     if (!ctx) return Promise.reject(new Error("مرورگر از پخش صدا پشتیبانی نمی‌کند."));
 
@@ -146,27 +187,34 @@
       }
       return buffer;
     }).then(function (buffer) {
-      buildChain(ctx, settings || {});
-      sourceNode.buffer = buffer;
-      sourceNode.loop = false;
-      sourceNode.onended = function () {
-        isPlaying = false;
-        playingUrl = null;
+      var ambiencePromise = wantsClientBackgroundAmbience(options)
+        ? startBackgroundAmbience(ctx)
+        : Promise.resolve();
+
+      return ambiencePromise.then(function () {
+        buildChain(ctx, settings || {});
+        sourceNode.buffer = buffer;
+        sourceNode.loop = false;
+        sourceNode.onended = function () {
+          stopBackgroundAmbience();
+          isPlaying = false;
+          playingUrl = null;
+          notifyState();
+        };
+        sourceNode.start(0);
+        isPlaying = true;
+        playingUrl = url;
         notifyState();
-      };
-      sourceNode.start(0);
-      isPlaying = true;
-      playingUrl = url;
-      notifyState();
+      });
     });
   }
 
-  function toggle(url, settings) {
+  function toggle(url, settings, options) {
     if (isPlaying && playingUrl === url) {
       stopInternal();
       return Promise.resolve(false);
     }
-    return play(url, settings).then(function () { return true; });
+    return play(url, settings, options).then(function () { return true; });
   }
 
   function updateSettings(settings) {

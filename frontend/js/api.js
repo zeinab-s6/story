@@ -128,9 +128,10 @@
     return request(apiUrl("/api/voices/mode"), { method: "GET" });
   }
 
-  async function previewVoice(voice, format, text) {
+  async function previewVoice(voice, format, text, options) {
     var body = { voice: voice, format: format || "wav" };
     if (text) body.text = text;
+    if (options && options.backgroundAmbience) body.backgroundAmbience = true;
     return request(apiUrl("/api/voices/preview"), {
       method: "POST",
       body: JSON.stringify(body),
