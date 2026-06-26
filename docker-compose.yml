@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      FRONTEND_ORIGIN: http://localhost:3000
+      DATABASE_PATH: /data/storytelling.sqlite
+      BACKUP_DIR: /data/backups
+      AUDIO_STORAGE_DIR: /data/audio
+      VOICE_UPLOAD_DIR: /data/voice-uploads
+    volumes:
+      - storytelling-data:/data
+    restart: unless-stopped
+
+volumes:
+  storytelling-data:

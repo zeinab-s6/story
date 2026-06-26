@@ -1,0 +1,37 @@
+# Dependencies & local artifacts
+**/node_modules
+npm-debug.log*
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+
+# Database & runtime data
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/data/
+backend/data/
+
+# Git & IDE
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+*.swo
+
+# Docs & deploy configs not needed in image
+README.md
+backend/README.md
+frontend/vercel.json
+.vercel
+.netlify
+
+# OS
+.DS_Store
+Thumbs.db
