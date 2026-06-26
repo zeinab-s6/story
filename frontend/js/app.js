@@ -803,7 +803,7 @@
       var hero = $("#story-hero");
       if (hero) hero.classList.add("story-hero--has-story");
     } else {
-      titleEl.textContent = "یک قصه برای کودکت بساز";
+      titleEl.textContent = "روزت را به قصه تبدیل کن.";
       if (subEl) subEl.textContent = "وقتی نمی‌دانی چی بگویی، یک قصه کوتاه، امن و آماده اجرا بساز.";
       var heroEl = $("#story-hero");
       if (heroEl) heroEl.classList.remove("story-hero--has-story");
