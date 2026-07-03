@@ -11,6 +11,7 @@ const DEV_ORIGINS = [
 const PRODUCTION_ORIGINS = [
   ...env.FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean),
   'https://storytelling-sepia.vercel.app',
+  'https://lalabye.darkube.ir',
 ];
 
 function uniqueOrigins(origins) {

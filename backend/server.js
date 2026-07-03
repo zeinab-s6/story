@@ -60,17 +60,17 @@ app.use('/api/auth', authRoutes);
 
 app.use(express.static(frontendDir, { index: false, extensions: ['html'] }));
 
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(frontendDir, 'index.html'));
-});
+function serveFrontendPage(filename) {
+  return (_req, res) => {
+    res.sendFile(path.join(frontendDir, filename));
+  };
+}
 
-app.get('/login', (_req, res) => {
-  res.sendFile(path.join(frontendDir, 'login.html'));
-});
-
-app.get('/onboarding', (_req, res) => {
-  res.sendFile(path.join(frontendDir, 'onboarding.html'));
-});
+app.get('/', serveFrontendPage('index.html'));
+app.get('/home', serveFrontendPage('index.html'));
+app.get('/index', serveFrontendPage('index.html'));
+app.get('/login', serveFrontendPage('login.html'));
+app.get('/onboarding', serveFrontendPage('onboarding.html'));
 
 app.use('/api', notFoundHandler);
 app.use(notFoundHandler);
