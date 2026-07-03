@@ -633,6 +633,47 @@ body.app-shell .voice-card .voice-card__play--active.btn.btn--icon.btn--sm {
   transform: scale(1.05);
 }
 
+.voice-card .voice-card__play--playing.btn.btn--icon.btn--sm,
+body.app-shell .voice-card .voice-card__play--playing.btn.btn--icon.btn--sm {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), #EC4899);
+  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.28);
+}
+
+.voice-card .voice-card__play--playing .voice-card__play-icon,
+body.app-shell .voice-card .voice-card__play--playing .voice-card__play-icon {
+  color: #fff;
+}
+
+.voice-card .voice-card__play--loading.btn.btn--icon.btn--sm,
+body.app-shell .voice-card .voice-card__play--loading.btn.btn--icon.btn--sm {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.voice-card .voice-card__play-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  line-height: 0;
+}
+
+.voice-card .voice-card__play--loading .voice-card__play-icon::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(219, 39, 119, 0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: voice-play-spin 0.7s linear infinite;
+}
+
+@keyframes voice-play-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---- Center Panel ---- */
 .last-story-banner {
   display: flex;

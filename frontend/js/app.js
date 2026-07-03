@@ -97,6 +97,8 @@
     isGeneratingStory: false,
     isGeneratingAudio: false,
     isPlaying: false,
+    playbackVoiceId: null,
+    loadingVoiceId: null,
     waveformAnimating: false,
     voiceMode: null,
     sliders: { speed: 0.85, pitch: 0.9, emotion: 0.4, clarity: 0.9 },
@@ -599,10 +601,47 @@
     }
   }
 
+  function getVoiceById(voiceId) {
+    return getVoices().find(function (v) { return v.id === voiceId; }) || null;
+  }
+
+  function updateVoiceCardPlayButtons() {
+    var container = $("#voice-library");
+    if (!container) return;
+    container.querySelectorAll(".voice-card").forEach(function (card) {
+      var voiceId = card.dataset.voiceId;
+      var btn = card.querySelector(".voice-card__play");
+      var iconEl = btn && btn.querySelector(".voice-card__play-icon");
+      if (!btn || !iconEl) return;
+
+      var voice = getVoiceById(voiceId);
+      var voiceName = voice ? voice.nameFa : "صدا";
+      var isLoading = state.loadingVoiceId === voiceId || (state.isGeneratingAudio && state.playbackVoiceId === voiceId);
+      var isPlaying = state.isPlaying && state.playbackVoiceId === voiceId;
+
+      btn.classList.toggle("voice-card__play--loading", isLoading);
+      btn.classList.toggle("voice-card__play--playing", isPlaying && !isLoading);
+      btn.disabled = isLoading;
+
+      if (isLoading) {
+        btn.setAttribute("aria-label", "در حال آماده‌سازی صدای " + voiceName);
+        iconEl.innerHTML = "";
+        iconEl.removeAttribute("data-icon");
+      } else if (isPlaying) {
+        btn.setAttribute("aria-label", "توقف صدای " + voiceName);
+        if (window.StorytellingIcons) window.StorytellingIcons.setPlayIcon(iconEl, true);
+      } else {
+        btn.setAttribute("aria-label", "پخش صدای " + voiceName);
+        if (window.StorytellingIcons) window.StorytellingIcons.setPlayIcon(iconEl, false);
+      }
+    });
+  }
+
   function syncPlayingState(playing) {
     state.isPlaying = !!playing;
     updatePrimaryButton();
     syncMobilePlayerMeta();
+    updateVoiceCardPlayButtons();
   }
 
   function playWithVoiceSettings(url) {
@@ -624,12 +663,37 @@
 
   function stopVoicePlayback() {
     if (window.VoicePlayer) window.VoicePlayer.stop();
+    if (audioElement) audioElement.pause();
     stopNativeBackgroundAmbience();
     syncPlayingState(false);
   }
 
+  function toggleVoiceCardPlayback(voice) {
+    if (state.isPlaying && state.playbackVoiceId === voice.id) {
+      stopVoicePlayback();
+      return Promise.resolve(false);
+    }
+    if (state.loadingVoiceId === voice.id || state.isGeneratingAudio) {
+      return Promise.resolve(false);
+    }
+    if (state.isPlaying) {
+      stopVoicePlayback();
+    }
+    invalidateStoryAudioIfNeeded(voice.id);
+    state.selectedVoiceId = voice.id;
+    state.playbackVoiceId = voice.id;
+    updateSummaries();
+    state.loadingVoiceId = voice.id;
+    updateVoiceCardPlayButtons();
+    return playVoicePreview(voice).finally(function () {
+      state.loadingVoiceId = null;
+      updateVoiceCardPlayButtons();
+    });
+  }
+
   function playVoicePreview(voice) {
     var selected = voice || getSelectedVoice();
+    state.playbackVoiceId = selected.id;
     if (!useApiPlayback()) {
       return playWithVoiceSettings(getVoiceSampleUrl());
     }
@@ -895,6 +959,7 @@
       label.textContent = useApiPlayback() ? "پخش" : "پخش نمونه";
     }
     setWaveformState(state.isPlaying);
+    updateVoiceCardPlayButtons();
   }
 
   function renderGoalChips() {
@@ -945,7 +1010,7 @@
           '<p class="voice-card__desc">' + voice.description + '</p>' +
         '</div>' +
         '<button type="button" class="voice-card__play btn btn--ghost btn--icon btn--sm" aria-label="پخش صدای ' + voice.nameFa + '">' +
-          (window.StorytellingIcons ? window.StorytellingIcons.render("play", "app-icon--sm") : "") +
+          '<span class="voice-card__play-icon app-icon app-icon--sm" data-icon="play"></span>' +
         '</button>';
       card.addEventListener("click", function (e) {
         if (e.target.closest(".voice-card__play")) return;
@@ -957,17 +1022,12 @@
       var playBtn = card.querySelector(".voice-card__play");
       playBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        invalidateStoryAudioIfNeeded(voice.id);
-        state.selectedVoiceId = voice.id;
-        updateSummaries();
-        playBtn.classList.add("voice-card__play--active");
-        playVoicePreview(voice).then(function () {
-          renderVoiceCards($("#voice-search") && $("#voice-search").value);
-        });
-        setTimeout(function () { playBtn.classList.remove("voice-card__play--active"); }, 1200);
+        toggleVoiceCardPlayback(voice);
       });
       container.appendChild(card);
     });
+    if (window.StorytellingIcons) window.StorytellingIcons.injectAll(container);
+    updateVoiceCardPlayButtons();
   }
 
   function renderStoryCard() {
