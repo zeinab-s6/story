@@ -81,6 +81,22 @@ body.login-page {
   box-sizing: border-box;
 }
 
+@media (max-width: 768px) {
+  html.login-html,
+  body.login-page {
+    height: 100svh;
+    max-height: 100svh;
+    min-height: 100svh;
+    overflow: hidden;
+  }
+
+  body.login-page {
+    justify-content: center;
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
 body.drawer-open {
   overflow: hidden;
 }
@@ -577,8 +593,8 @@ body.drawer-open {
   line-height: 1.45;
 }
 
-.voice-card .voice-card__preview.btn.btn--icon.btn--sm,
-body.app-shell .voice-card .voice-card__preview.btn.btn--icon.btn--sm {
+.voice-card .voice-card__play.btn.btn--icon.btn--sm,
+body.app-shell .voice-card .voice-card__play.btn.btn--icon.btn--sm {
   flex: 0 0 36px;
   flex-shrink: 0;
   align-self: center;
@@ -599,18 +615,18 @@ body.app-shell .voice-card .voice-card__preview.btn.btn--icon.btn--sm {
   line-height: 0;
 }
 
-.voice-card .voice-card__preview.btn.btn--icon.btn--sm:hover:not(:disabled),
-.voice-card .voice-card__preview.btn.btn--ghost.btn--icon.btn--sm:hover:not(:disabled),
-body.app-shell .voice-card .voice-card__preview.btn.btn--icon.btn--sm:hover:not(:disabled),
-body.app-shell .voice-card .voice-card__preview.btn.btn--ghost.btn--icon.btn--sm:hover:not(:disabled) {
+.voice-card .voice-card__play.btn.btn--icon.btn--sm:hover:not(:disabled),
+.voice-card .voice-card__play.btn.btn--ghost.btn--icon.btn--sm:hover:not(:disabled),
+body.app-shell .voice-card .voice-card__play.btn.btn--icon.btn--sm:hover:not(:disabled),
+body.app-shell .voice-card .voice-card__play.btn.btn--ghost.btn--icon.btn--sm:hover:not(:disabled) {
   color: var(--accent-2);
   border-color: var(--accent);
   background: #fff;
   transform: none;
 }
 
-.voice-card .voice-card__preview--active.btn.btn--icon.btn--sm,
-body.app-shell .voice-card .voice-card__preview--active.btn.btn--icon.btn--sm {
+.voice-card .voice-card__play--active.btn.btn--icon.btn--sm,
+body.app-shell .voice-card .voice-card__play--active.btn.btn--icon.btn--sm {
   color: var(--accent);
   border-color: var(--accent);
   background: #fff;
@@ -1216,20 +1232,6 @@ input[type="range"]:focus-visible {
 .player-duration {
   font-size: 0.75rem;
   color: var(--muted);
-}
-
-.player-bar__preview-btn,
-.player-actions #btn-preview {
-  border-color: rgba(219, 39, 119, 0.38);
-  color: var(--accent);
-  background: rgba(255, 255, 255, 0.75);
-}
-
-.player-bar__preview-btn:hover:not(:disabled),
-.player-actions #btn-preview:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: #BE185D;
-  background: rgba(252, 231, 243, 0.65);
 }
 
 /* Waveform */
@@ -2041,11 +2043,6 @@ body.app-shell .player-bar__meta .player-duration {
   font-size: 0.72rem;
 }
 
-body.app-shell .player-bar__preview-btn {
-  flex-shrink: 0;
-  min-height: 40px;
-}
-
 body.app-shell .toast-container {
   bottom: calc(var(--bottom-nav-h) + var(--mobile-player-h) + env(safe-area-inset-bottom, 0px) + 12px);
   width: var(--app-frame-w);
@@ -2398,11 +2395,6 @@ body.app-shell .chip {
     font-size: 0.72rem;
   }
 
-  .player-bar__preview-btn {
-    flex-shrink: 0;
-    min-height: 40px;
-  }
-
   body.app-shell {
     padding-bottom: calc(var(--bottom-nav-h) + var(--mobile-player-h) + env(safe-area-inset-bottom, 0px) + 8px);
   }
@@ -2486,10 +2478,6 @@ body.app-shell .chip {
     padding: 6px 10px;
   }
 
-  .player-bar__preview-btn {
-    padding-inline: 10px;
-    font-size: 0.75rem;
-  }
 }
 
 /* ============================================

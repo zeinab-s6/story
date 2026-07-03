@@ -33,6 +33,7 @@
     }
     if (panelLogin) panelLogin.hidden = !isLogin;
     if (panelRegister) panelRegister.hidden = isLogin;
+    document.body.classList.toggle("login-page--register", !isLogin);
     showError("");
   }
 
