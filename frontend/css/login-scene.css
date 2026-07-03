@@ -389,7 +389,7 @@ body.login-page.login-page--night .login-logo-ring {
 
 .login-tagline {
   font-size: 0.88rem;
-  color: var(--login-tagline);
+  color: #ffffff;
   line-height: 1.65;
   max-width: 340px;
   margin-inline: auto;
