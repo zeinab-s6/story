@@ -56,6 +56,7 @@
     <div class="story-hero__content">
       <h2 class="story-hero__title" id="hero-title">روزت را به قصه تبدیل کن.</h2>
       <p class="story-hero__subtitle" id="hero-subtitle">وقتی قصه ای برای گفتن نداری با لالابای برای کوچولوت یک قصه تازه بساز.</p>
+      <button type="button" class="btn btn--primary btn--sm home-story-cta" id="btn-home-go-story">رفتن به بخش قصه</button>
     </div>
   </section>
 
@@ -132,14 +133,19 @@
             <label for="extraContext">توضیح کوتاه برای بهتر شدن قصه</label>
             <textarea id="extraContext" name="extraContext" rows="3" placeholder="مثلاً امشب خیلی خسته است یا در ماشین بی‌قرار شده."></textarea>
           </div>
-          <p class="safety-note">
-            این ابزار جایگزین مشاوره تخصصی کودک، پزشکی یا روانشناسی نیست؛ فقط یک پیشنهاد عمومی و کم‌ریسک برای والد ارائه می‌دهد.
-          </p>
-          <label class="checkbox-label">
-            <input type="checkbox" id="safety-checkbox" name="safety">
-            <span>می‌دانم که این قصه فقط پیشنهاد عمومی است و جایگزین نظر متخصص نیست.</span>
-          </label>
           <div class="form-error" id="form-error" hidden role="alert"></div>
+          <div class="story-create-actions">
+            <button type="button" class="btn btn--primary btn--full" id="btn-create-story">قصه‌ات را بساز</button>
+            <div class="story-create-loading" id="story-create-loading" hidden>
+              <div class="story-create-loading__spinner" aria-hidden="true"></div>
+              <p class="story-create-loading__text" id="story-create-loading-hint">در حال آماده‌سازی قصه کودک شما...</p>
+              <div class="create-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="story-create-progress">
+                <div class="create-progress__bar" id="story-create-progress-bar"></div>
+              </div>
+              <span class="create-progress__pct" id="story-create-progress-pct">۰٪</span>
+              <button type="button" class="btn btn--ghost btn--sm" id="btn-cancel-story">توقف ساخت</button>
+            </div>
+          </div>
         </form>
       </section>
 
@@ -159,8 +165,8 @@
     <!-- Center Panel -->
     <section class="panel panel--center" aria-label="ویرایشگر و نتیجه قصه">
       <div class="last-story-banner card glass" id="last-story-section" hidden>
-        <span class="last-story-banner__label">آخرین قصه ساخته‌شده</span>
-        <button type="button" class="btn btn--ghost btn--sm" id="btn-clear-saved">پاک کردن قصه ذخیره‌شده</button>
+        <span class="last-story-banner__label">قصه‌های ساخته‌شده</span>
+        <div class="home-stories-list" id="home-stories-list"></div>
       </div>
 
       <div class="card glass center-card">
@@ -387,28 +393,6 @@
       </section>
     </aside>
 
-    <!-- Create Panel (mobile) -->
-    <section class="create-panel" id="create-panel" aria-label="ساخت قصه" hidden>
-      <div class="create-panel__card" id="create-panel-card">
-        <div class="create-panel__state create-panel__state--empty" id="create-empty">
-          <span class="create-panel__icon" aria-hidden="true">
-            <img src="images/book.png" alt="" width="40" height="40" decoding="async">
-          </span>
-          <p class="create-panel__message">در بخش قصه تنظیمات قصه را تکمیل کن</p>
-          <button type="button" class="btn btn--ghost btn--sm" id="btn-go-story-settings">رفتن به بخش قصه</button>
-        </div>
-        <div class="create-panel__state create-panel__state--loading" id="create-loading" hidden>
-          <div class="create-panel__spinner" aria-hidden="true"></div>
-          <p class="create-panel__title">در حال آماده‌سازی قصه کودک شما</p>
-          <p class="create-panel__hint" id="create-loading-hint">لطفاً چند لحظه صبر کنید...</p>
-          <div class="create-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="create-progress">
-            <div class="create-progress__bar" id="create-progress-bar"></div>
-          </div>
-          <span class="create-progress__pct" id="create-progress-pct">۰٪</span>
-          <button type="button" class="btn btn--ghost btn--sm create-panel__cancel" id="btn-cancel-story">توقف ساخت</button>
-        </div>
-      </div>
-    </section>
   </main>
 
   <!-- Mobile Bottom Nav -->
@@ -425,12 +409,6 @@
       </span>
       <span class="bottom-nav__label">قصه</span>
     </button>
-    <button type="button" class="bottom-nav__item" id="btn-nav-create" aria-label="ساخت">
-      <span class="bottom-nav__icon">
-        <img src="images/heart-plus.png" alt="" width="26" height="26" decoding="async">
-      </span>
-      <span class="bottom-nav__label">ساخت</span>
-    </button>
     <button type="button" class="bottom-nav__item" data-mobile-tab="voice" aria-label="صداها">
       <span class="bottom-nav__icon">
         <img src="images/mic.png" alt="" width="26" height="26" decoding="async">
@@ -445,19 +423,9 @@
     </button>
   </nav>
 
-  <!-- Bottom Player -->
+  <!-- Bottom Player (desktop) -->
   <footer class="player-bar" id="player-bar">
     <div class="player-bar__inner container">
-      <div class="player-bar__compact">
-        <button type="button" class="player-bar__play" id="btn-mobile-play" aria-label="پخش">
-          <span class="player-bar__play-icon app-icon app-icon--play" id="mobile-play-icon" data-icon="play"></span>
-        </button>
-        <div class="player-bar__meta">
-          <strong id="player-story-title-compact">قصه‌ای نساخته</strong>
-          <span class="player-duration" id="player-duration-compact">—</span>
-        </div>
-      </div>
-
       <div class="player-bar__desktop">
       <div class="player-info">
         <div class="player-voice">
