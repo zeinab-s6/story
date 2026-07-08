@@ -569,7 +569,6 @@
   function syncPlayingState(playing) {
     state.isPlaying = !!playing;
     updatePrimaryButton();
-    syncMobilePlayerMeta();
     updateVoiceCardPlayButtons();
   }
 
@@ -838,7 +837,6 @@
     el = $("#summary-duration"); if (el) el.textContent = duration;
     el = $("#player-duration"); if (el) el.textContent = duration;
     el = $("#player-voice-name"); if (el) el.textContent = voice.nameFa;
-    syncMobilePlayerMeta();
   }
 
   function updateCharCount() {
@@ -969,7 +967,7 @@
       if (preview) preview.value = "";
       updateHero(null);
       updateCharCount();
-      syncMobilePlayerMeta();
+      updateHomeStoryCta();
       return;
     }
 
@@ -1013,7 +1011,7 @@
     }
 
     updateHero(s);
-    syncMobilePlayerMeta();
+    updateHomeStoryCta();
   }
 
   function renderAudioPlayer() {
@@ -1277,29 +1275,20 @@
     };
   }
 
-  async function handleGenerateStory(options) {
-    options = options || {};
+  async function handleGenerateStory() {
     clearError();
     var err = validateForm();
     if (err) {
-      if (options.fromCreatePanel && isMobileLayout()) {
-        openCreatePanel("empty");
-        setMobileTab("create");
-      } else {
-        showError(err);
-      }
+      showError(err);
       return;
     }
     var data = getFormData();
     state.isGeneratingStory = true;
     updatePrimaryButton();
+    setStoryCreateLoading(true);
     storyGenerationAbort = new AbortController();
     var signal = storyGenerationAbort.signal;
-    if (options.fromCreatePanel && isMobileLayout()) {
-      openCreatePanel("loading");
-      setMobileTab("create");
-      startCreateProgress();
-    }
+    startCreateProgress();
 
     try {
       var result;
@@ -1332,25 +1321,13 @@
         savedAt: new Date().toISOString(),
         formSnapshot: getFormData(),
       });
-      if (options.fromCreatePanel && isMobileLayout()) {
-        completeCreateProgress();
-        showToast("قصه با موفقیت ساخته شد!", "success");
-        setTimeout(function () {
-          closeCreatePanel();
-          setMobileTab("home");
-        }, 500);
-      } else {
-        showToast("قصه با موفقیت ساخته شد!", "success");
-        if (isMobileLayout()) setMobileTab("home");
-      }
+      completeCreateProgress();
+      showToast("قصه با موفقیت ساخته شد!", "success");
+      if (isMobileLayout()) setMobileTab("home");
     } catch (e) {
       if (e.name === "AbortError") {
-        if (options.fromCreatePanel && isMobileLayout()) {
-          stopCreateProgress();
-          closeCreatePanel();
-          setMobileTab("story");
-          showToast("ساخت قصه متوقف شد.", "info");
-        }
+        stopCreateProgress();
+        showToast("ساخت قصه متوقف شد.", "info");
         return;
       }
       var msg = "ساخت قصه ناموفق بود. لطفاً دوباره تلاش کن.";
@@ -1359,17 +1336,12 @@
       } else if (e.message) {
         msg = e.message;
       }
-      if (options.fromCreatePanel && isMobileLayout()) {
-        stopCreateProgress();
-        closeCreatePanel();
-        setMobileTab("story");
-        showToast(msg, "error");
-      } else {
-        showError(msg);
-      }
+      showError(msg);
     } finally {
       storyGenerationAbort = null;
       state.isGeneratingStory = false;
+      stopCreateProgress();
+      setStoryCreateLoading(false);
       updatePrimaryButton();
     }
   }
@@ -1745,25 +1717,21 @@
 
     $$(".bottom-nav__item[data-mobile-tab]").forEach(function (item) {
       item.addEventListener("click", function () {
-        closeCreatePanel();
         setMobileTab(item.dataset.mobileTab);
       });
     });
 
     $$("[data-mobile-tab-link]").forEach(function (item) {
       item.addEventListener("click", function () {
-        closeCreatePanel();
         setMobileTab(item.dataset.mobileTabLink);
       });
     });
 
-    var navCreate = $("#btn-nav-create");
-    if (navCreate) navCreate.addEventListener("click", handleNavCreateClick);
-
-    $("#btn-go-story-settings") && $("#btn-go-story-settings").addEventListener("click", function () {
-      closeCreatePanel();
+    $("#btn-home-go-story") && $("#btn-home-go-story").addEventListener("click", function () {
       setMobileTab("story");
     });
+
+    $("#btn-create-story") && $("#btn-create-story").addEventListener("click", handleGenerateStory);
 
     $("#btn-cancel-story") && $("#btn-cancel-story").addEventListener("click", cancelStoryGeneration);
 
@@ -1772,7 +1740,6 @@
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
     });
-    $("#btn-mobile-play") && $("#btn-mobile-play").addEventListener("click", handleMobilePlayAction);
 
     window.addEventListener("resize", function () {
       if (isMobileLayout()) {
@@ -1827,13 +1794,13 @@
     updateCharCount();
     updatePrimaryButton();
     updateDownloadControls();
+    updateHomeStoryCta();
     bindEvents();
     syncVoiceTaglines();
     fetchVoiceMode();
     if (isMobileLayout()) {
       document.body.setAttribute("data-mobile-tab", mobileTab);
     }
-    syncMobilePlayerMeta();
   }
 
   if (document.readyState === "loading") {
