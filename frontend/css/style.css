@@ -2714,14 +2714,6 @@ body[data-mobile-tab="home"] .center-card--has-audio .story-section:not(.story-s
   display: none !important;
 }
 
-.bottom-nav__item[data-mobile-tab="stories"] .bottom-nav__label {
-  font-size: 0.52rem;
-  max-width: 4.5rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .story-create-actions {
   margin-top: 8px;
   display: flex;
@@ -2739,18 +2731,25 @@ body.app-shell[data-mobile-tab="story"] .story-create-actions,
 body[data-mobile-tab="story"] .story-create-actions {
   position: fixed;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(12px);
   bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 8px);
   width: min(calc(var(--app-frame-w) - 32px), calc(100vw - 32px));
   z-index: 80;
-  padding: 12px 0 8px;
+  padding: 0;
   margin: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.94) 22%,
-    #ffffff 100%
-  );
+  background: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, visibility 0.28s ease, transform 0.28s ease;
+}
+
+body.app-shell[data-mobile-tab="story"] .story-create-actions.story-create-actions--visible,
+body[data-mobile-tab="story"] .story-create-actions.story-create-actions--visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
 }
 
 body.app-shell.story-creating[data-mobile-tab="story"] .story-create-actions {

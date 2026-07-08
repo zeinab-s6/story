@@ -115,6 +115,7 @@
   let createHintTimer = null;
   let createProgressValue = 0;
   let storyGenerationAbort = null;
+  let storyCreateScrollObserver = null;
 
   var CREATE_LOADING_HINTS = [
     "لطفاً چند لحظه صبر کنید...",
@@ -137,6 +138,7 @@
 
   function setMobileTab(tab) {
     mobileTab = tab || "home";
+    if (mobileTab === "stories") mobileTab = "home";
     if (isMobileLayout()) {
       document.body.setAttribute("data-mobile-tab", mobileTab);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -144,6 +146,54 @@
     $$(".bottom-nav__item[data-mobile-tab]").forEach(function (item) {
       item.classList.toggle("bottom-nav__item--active", item.dataset.mobileTab === mobileTab);
     });
+    setupStoryCreateScrollReveal();
+  }
+
+  function updateStoryCreateButtonVisibility() {
+    var createActions = document.querySelector(".story-create-actions");
+    var voiceSection = $("#story-voice-section");
+    if (!createActions) return;
+
+    var shouldShow = false;
+    if (isMobileLayout() && mobileTab === "story" && voiceSection) {
+      var rect = voiceSection.getBoundingClientRect();
+      var navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bottom-nav-h")) || 62;
+      var ctaLine = window.innerHeight - navH - 72;
+      shouldShow = rect.bottom <= ctaLine;
+    }
+
+    createActions.classList.toggle("story-create-actions--visible", shouldShow);
+  }
+
+  function onStoryCreateScroll() {
+    updateStoryCreateButtonVisibility();
+  }
+
+  function setupStoryCreateScrollReveal() {
+    if (storyCreateScrollObserver) {
+      storyCreateScrollObserver.disconnect();
+      storyCreateScrollObserver = null;
+    }
+    window.removeEventListener("scroll", onStoryCreateScroll);
+
+    var createActions = document.querySelector(".story-create-actions");
+    if (createActions) createActions.classList.remove("story-create-actions--visible");
+
+    if (!isMobileLayout() || mobileTab !== "story") return;
+
+    updateStoryCreateButtonVisibility();
+    window.addEventListener("scroll", onStoryCreateScroll, { passive: true });
+
+    if (typeof IntersectionObserver === "undefined") return;
+
+    var voiceSection = $("#story-voice-section");
+    if (!voiceSection) return;
+
+    storyCreateScrollObserver = new IntersectionObserver(
+      function () { updateStoryCreateButtonVisibility(); },
+      { root: null, threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    storyCreateScrollObserver.observe(voiceSection);
   }
 
   function setStoryCreateLoading(active) {
@@ -300,7 +350,19 @@
   }
 
   function getStorySourceLabel() {
-    return "قصه‌ای با صدا انتخابی";
+    return "قصه‌ای با صدای انتخابی شما.";
+  }
+
+  function getStoryDisplayAge(story) {
+    if (!story) return "—";
+    if (Number.isFinite(story.age) || story.age === 0) {
+      return story.age.toLocaleString("fa-IR");
+    }
+    var ageEl = $("#age");
+    if (ageEl && ageEl.value !== "") {
+      return Number(ageEl.value).toLocaleString("fa-IR");
+    }
+    return "—";
   }
 
   function $(sel) { return document.querySelector(sel); }
@@ -1099,7 +1161,7 @@
 
     $("#meta-story-id").textContent = state.storyId ? "#" + state.storyId : "—";
     $("#meta-duration").textContent = (s.durationMinutes || "—") + " دقیقه";
-    $("#meta-age").textContent = s.ageRange || "—";
+    $("#meta-age").textContent = getStoryDisplayAge(s);
     $("#meta-provider").textContent = getStorySourceLabel();
 
     if (preview) {
@@ -1321,6 +1383,9 @@
           el.value = String(fs[key]);
         }
       });
+      if (Number.isFinite(fs.age) || fs.age === 0) {
+        state.storyResult.age = fs.age;
+      }
       renderGoalChips();
     }
 
@@ -1371,7 +1436,7 @@
       provider: "mock",
       story: {
         title: "ماجرای آرام " + name,
-        ageRange: data.age + " سال",
+        age: data.age,
         goal: data.goal,
         durationMinutes: data.durationMinutes,
         parentEffort: "low",
@@ -1416,6 +1481,7 @@
       state.storyId = result.storyId;
       state.provider = result.provider;
       state.storyResult = result.story;
+      state.storyResult.age = data.age;
       state.audioResult = null;
       state.audioFullUrl = null;
       renderStoryCard();
@@ -1881,13 +1947,7 @@
     });
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
-    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", function () {
-      if (isMobileLayout()) {
-        setMobileTab("stories");
-      } else {
-        openHistoryDrawer();
-      }
-    });
+    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
     });
@@ -1896,6 +1956,7 @@
       if (isMobileLayout()) {
         document.body.setAttribute("data-mobile-tab", mobileTab);
       }
+      setupStoryCreateScrollReveal();
     });
 
     bindProfileAvatarChange();
@@ -1953,6 +2014,7 @@
     if (isMobileLayout()) {
       document.body.setAttribute("data-mobile-tab", mobileTab);
     }
+    setupStoryCreateScrollReveal();
   }
 
   if (document.readyState === "loading") {
