@@ -107,7 +107,6 @@
   };
 
   let mobileTab = "home";
-  let toastTimeout = null;
   let audioElement = null;
   let storyAudioBlobUrl = null;
   let audioHydrationToken = 0;
@@ -121,6 +120,12 @@
     "لطفاً چند لحظه صبر کنید...",
     "قصه متناسب با سن و علایق کودک نوشته می‌شود...",
     "تقریباً آماده است...",
+  ];
+
+  var CREATE_AUDIO_LOADING_HINTS = [
+    "در حال ساخت صدای قصه با راوی انتخابی...",
+    "صدای قصه در حال آماده‌سازی است...",
+    "چند لحظه دیگر قصه و صدا در خانه نمایش داده می‌شوند...",
   ];
 
   var BACKGROUND_AMBIENCE_URL = "images/audio/source.mp3";
@@ -145,42 +150,82 @@
     var btn = $("#btn-create-story");
     var loading = $("#story-create-loading");
     if (btn) btn.hidden = !!active;
-    if (loading) loading.hidden = !active;
-    document.body.classList.toggle("story-creating", !!active && isMobileLayout());
+    if (loading) loading.hidden = true;
+    setCreateModal(!!active);
+  }
+
+  function setCreateModal(active) {
+    var modal = $("#create-modal");
+    if (!modal) return;
+    modal.hidden = !active;
+    modal.setAttribute("aria-hidden", active ? "false" : "true");
+    document.body.classList.toggle("create-modal-open", !!active);
+  }
+
+  function setCreateModalPhase(phase) {
+    var storyStep = $("#create-step-story");
+    var audioStep = $("#create-step-audio");
+    if (storyStep) {
+      storyStep.classList.toggle("create-modal__step--active", phase === "story");
+      storyStep.classList.toggle("create-modal__step--done", phase === "audio" || phase === "done");
+    }
+    if (audioStep) {
+      audioStep.classList.toggle("create-modal__step--active", phase === "audio");
+      audioStep.classList.toggle("create-modal__step--done", phase === "done");
+    }
+    var title = $("#create-modal-title");
+    if (title) {
+      if (phase === "audio") title.textContent = "در حال ساخت صدای قصه";
+      else if (phase === "done") title.textContent = "قصه و صدا آماده‌اند!";
+      else title.textContent = "در حال ساخت قصه";
+    }
   }
 
   function updateCreateProgressUI(value) {
-    var bar = $("#story-create-progress-bar");
-    var pct = $("#story-create-progress-pct");
-    var progress = $("#story-create-progress");
     var rounded = Math.round(value);
-    if (bar) bar.style.width = rounded + "%";
-    if (pct) pct.textContent = rounded.toLocaleString("fa-IR") + "٪";
-    if (progress) progress.setAttribute("aria-valuenow", String(rounded));
+    ["#story-create-progress-bar", "#create-modal-progress-bar"].forEach(function (sel) {
+      var bar = $(sel);
+      if (bar) bar.style.width = rounded + "%";
+    });
+    ["#story-create-progress-pct", "#create-modal-progress-pct"].forEach(function (sel) {
+      var pct = $(sel);
+      if (pct) pct.textContent = rounded.toLocaleString("fa-IR") + "٪";
+    });
+    ["#story-create-progress", "#create-modal-progress"].forEach(function (sel) {
+      var progress = $(sel);
+      if (progress) progress.setAttribute("aria-valuenow", String(rounded));
+    });
+  }
+
+  function setCreateHint(text) {
+    var hintEl = $("#story-create-loading-hint");
+    var modalHint = $("#create-modal-hint");
+    if (hintEl) hintEl.textContent = text;
+    if (modalHint) modalHint.textContent = text;
   }
 
   function startCreateProgress() {
     stopCreateProgress();
+    setCreateModalPhase("story");
     createProgressValue = 0;
     updateCreateProgressUI(0);
     var hintIndex = 0;
-    var hintEl = $("#story-create-loading-hint");
-    if (hintEl) hintEl.textContent = CREATE_LOADING_HINTS[0];
+    setCreateHint(CREATE_LOADING_HINTS[0]);
     createHintTimer = setInterval(function () {
       hintIndex = (hintIndex + 1) % CREATE_LOADING_HINTS.length;
-      if (hintEl) hintEl.textContent = CREATE_LOADING_HINTS[hintIndex];
+      setCreateHint(CREATE_LOADING_HINTS[hintIndex]);
     }, 3200);
     createProgressTimer = setInterval(function () {
-      if (createProgressValue >= 90) return;
-      var step = createProgressValue < 45 ? 2.5 : createProgressValue < 75 ? 1.2 : 0.6;
-      createProgressValue = Math.min(90, createProgressValue + step);
+      if (createProgressValue >= 48) return;
+      var step = createProgressValue < 25 ? 2.5 : createProgressValue < 40 ? 1.2 : 0.6;
+      createProgressValue = Math.min(48, createProgressValue + step);
       updateCreateProgressUI(createProgressValue);
     }, 450);
   }
 
   function completeCreateProgress() {
     stopCreateProgress();
-    updateCreateProgressUI(100);
+    updateCreateProgressUI(50);
   }
 
   function stopCreateProgress() {
@@ -221,6 +266,37 @@
     var hidden = !!state.storyResult;
     if (cta) cta.hidden = hidden;
     if (footer) footer.hidden = hidden;
+    updateHomePlayCard();
+  }
+
+  function updateHomePlayCard() {
+    var card = $("#home-play-card");
+    var titleEl = $("#home-play-title");
+    var metaEl = $("#home-play-meta");
+    var playBtn = $("#btn-home-play");
+    var playIcon = $("#home-play-icon");
+    if (!card) return;
+
+    var show = !!(state.storyResult && state.audioFullUrl);
+    card.hidden = !show;
+    if (!show) {
+      if (playBtn) playBtn.classList.remove("home-play-card__play--playing");
+      return;
+    }
+
+    var voice = getSelectedVoice();
+    var s = state.storyResult;
+    if (titleEl) titleEl.textContent = s.title || "قصه آماده است";
+    if (metaEl) {
+      metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
+    }
+    if (playBtn) {
+      playBtn.classList.toggle("home-play-card__play--playing", state.isPlaying);
+      playBtn.setAttribute("aria-label", state.isPlaying ? "توقف قصه" : "پخش قصه");
+    }
+    if (playIcon && window.StorytellingIcons) {
+      window.StorytellingIcons.setPlayIcon(playIcon, state.isPlaying);
+    }
   }
 
   function getStorySourceLabel() {
@@ -577,6 +653,7 @@
     state.isPlaying = !!playing;
     updatePrimaryButton();
     updateVoiceCardPlayButtons();
+    updateHomePlayCard();
   }
 
   function playWithVoiceSettings(url) {
@@ -710,19 +787,7 @@
   }
 
   function showToast(message, type) {
-    var container = $("#toast-container");
-    if (!container) return;
-    var toast = document.createElement("div");
-    toast.className = "toast toast--" + (type || "info");
-    toast.setAttribute("role", "alert");
-    toast.textContent = message;
-    container.appendChild(toast);
-    requestAnimationFrame(function () { toast.classList.add("toast--visible"); });
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(function () {
-      toast.classList.remove("toast--visible");
-      setTimeout(function () { toast.remove(); }, 300);
-    }, 4000);
+    /* toast notifications disabled */
   }
 
   function showError(message) {
@@ -844,6 +909,32 @@
     el = $("#summary-duration"); if (el) el.textContent = duration;
     el = $("#player-duration"); if (el) el.textContent = duration;
     el = $("#player-voice-name"); if (el) el.textContent = voice.nameFa;
+    el = $("#story-voice-name"); if (el) el.textContent = voice.nameFa;
+  }
+
+  function updateCenterCardState() {
+    var centerCard = document.querySelector(".panel--center .center-card");
+    if (!centerCard) return;
+    centerCard.classList.toggle("center-card--has-story", !!state.storyResult);
+    centerCard.classList.toggle("center-card--has-audio", !!state.audioFullUrl);
+  }
+
+  function startCreateAudioProgress() {
+    stopCreateProgress();
+    setCreateModalPhase("audio");
+    createProgressValue = 52;
+    updateCreateProgressUI(createProgressValue);
+    var hintIndex = 0;
+    setCreateHint(CREATE_AUDIO_LOADING_HINTS[0]);
+    createHintTimer = setInterval(function () {
+      hintIndex = (hintIndex + 1) % CREATE_AUDIO_LOADING_HINTS.length;
+      setCreateHint(CREATE_AUDIO_LOADING_HINTS[hintIndex]);
+    }, 3200);
+    createProgressTimer = setInterval(function () {
+      if (createProgressValue >= 96) return;
+      createProgressValue = Math.min(96, createProgressValue + 0.45);
+      updateCreateProgressUI(createProgressValue);
+    }, 500);
   }
 
   function updateCharCount() {
@@ -975,6 +1066,7 @@
       updateHero(null);
       updateCharCount();
       updateHomeStoryCta();
+      updateCenterCardState();
       return;
     }
 
@@ -1017,6 +1109,8 @@
 
     updateHero(s);
     updateHomeStoryCta();
+    updateCenterCardState();
+    updateHomePlayCard();
   }
 
   function renderAudioPlayer() {
@@ -1028,10 +1122,14 @@
       audioElement = null;
       revokeStoryAudioBlobUrl();
       updateDownloadControls();
+      updateCenterCardState();
+      updateHomePlayCard();
       return;
     }
     if (useApiPlayback()) {
       renderAudioPlayerShell();
+      updateCenterCardState();
+      updateHomePlayCard();
       return;
     }
     wrap.hidden = false;
@@ -1049,6 +1147,8 @@
       });
     }
     updateDownloadControls();
+    updateCenterCardState();
+    updateHomePlayCard();
   }
 
   function renderSliders() {
@@ -1107,6 +1207,7 @@
       updateSummaries();
       updateHomeStoryCta();
     } catch (e) { /* ignore corrupt data */ }
+    updateCenterCardState();
   }
 
   function addToHistory(item) {
@@ -1334,15 +1435,26 @@
         formSnapshot: getFormData(),
       });
       completeCreateProgress();
-      if (isMobileLayout()) {
-        await delayWithSignal(700, signal);
-        if (signal.aborted) return;
-      }
+      startCreateAudioProgress();
+      var audioReady = await handleGenerateAudio({ autoPlay: false, suppressToast: true });
+      stopCreateProgress();
+      setCreateModalPhase("done");
+      updateCreateProgressUI(100);
+      setCreateHint(audioReady ? "قصه و صدا آماده‌اند!" : "قصه ساخته شد. صدا در خانه قابل تلاش مجدد است.");
+      await delayWithSignal(600, signal);
+      if (signal.aborted) return;
       setStoryCreateLoading(false);
       if (isMobileLayout()) setMobileTab("home");
+      updateHomePlayCard();
+      if (audioReady) {
+        showToast("قصه و صدا در صفحه خانه آماده‌اند.", "success");
+      } else {
+        showToast("قصه ساخته شد. می‌توانی از بخش صدا دوباره تلاش کنی.", "info");
+      }
     } catch (e) {
       if (e.name === "AbortError") {
         stopCreateProgress();
+        setStoryCreateLoading(false);
         showToast("ساخت قصه متوقف شد.", "info");
         return;
       }
@@ -1442,15 +1554,17 @@
           localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
           renderHistory();
         }
-        showToast("نمونه صدا آماده است — اسلایدرها را تغییر بده و پخش کن.", "success");
+        if (!options.suppressToast) {
+          showToast("نمونه صدا آماده است — اسلایدرها را تغییر بده و پخش کن.", "success");
+        }
         if (options.autoPlay) {
           await playGeneratedStoryAudio();
         }
+        return true;
       } finally {
         state.isGeneratingAudio = false;
         updatePrimaryButton();
       }
-      return !!options.autoPlay;
     }
 
     state.isGeneratingAudio = true;
@@ -1484,7 +1598,9 @@
       }
       var ready = await hydrateStoryAudioPlayer();
       if (!ready) return false;
-      showToast("فایل صوتی آماده است!", "success");
+      if (!options.suppressToast) {
+        showToast("فایل صوتی آماده است!", "success");
+      }
       if (options.autoPlay) {
         await playGeneratedStoryAudio();
       }
@@ -1752,7 +1868,17 @@
 
     $("#btn-create-story") && $("#btn-create-story").addEventListener("click", handleGenerateStory);
 
+    $("#btn-story-change-voice") && $("#btn-story-change-voice").addEventListener("click", function () {
+      setMobileTab("voice");
+    });
+
     $("#btn-cancel-story") && $("#btn-cancel-story").addEventListener("click", cancelStoryGeneration);
+    $("#btn-cancel-create-modal") && $("#btn-cancel-create-modal").addEventListener("click", cancelStoryGeneration);
+
+    $("#btn-home-play") && $("#btn-home-play").addEventListener("click", function () {
+      if (!state.audioFullUrl) return;
+      togglePlayPause();
+    });
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", function () {
@@ -1820,6 +1946,7 @@
     updatePrimaryButton();
     updateDownloadControls();
     updateHomeStoryCta();
+    if (window.StorytellingIcons) window.StorytellingIcons.injectAll(document);
     bindEvents();
     syncVoiceTaglines();
     fetchVoiceMode();
