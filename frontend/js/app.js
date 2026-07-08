@@ -146,6 +146,7 @@
     var loading = $("#story-create-loading");
     if (btn) btn.hidden = !!active;
     if (loading) loading.hidden = !active;
+    document.body.classList.toggle("story-creating", !!active && isMobileLayout());
   }
 
   function updateCreateProgressUI(value) {
@@ -216,8 +217,14 @@
 
   function updateHomeStoryCta() {
     var cta = $("#btn-home-go-story");
-    if (!cta) return;
-    cta.hidden = !!state.storyResult;
+    var footer = $("#home-footer");
+    var hidden = !!state.storyResult;
+    if (cta) cta.hidden = hidden;
+    if (footer) footer.hidden = hidden;
+  }
+
+  function getStorySourceLabel() {
+    return "قصه‌ای با صدا انتخابی";
   }
 
   function $(sel) { return document.querySelector(sel); }
@@ -974,14 +981,12 @@
     if (emptyEl) emptyEl.hidden = true;
     resultEl.hidden = false;
     var s = state.storyResult;
-    var providerLabel = PROVIDER_LABELS[state.provider] || state.provider || "—";
 
     $("#story-title").textContent = s.title || "بدون عنوان";
     $("#story-parent-intro").textContent = s.parentIntro || "—";
     $("#story-text").textContent = s.storyText || "";
     $("#story-calming").textContent = s.calmingAction || "—";
     $("#story-question").textContent = s.followUpQuestion || "—";
-    $("#story-safety").textContent = s.safetyNote || "—";
 
     var interactionsEl = $("#story-interactions");
     var interactionsSection = $("#story-interactions-section");
@@ -1003,7 +1008,7 @@
     $("#meta-story-id").textContent = state.storyId ? "#" + state.storyId : "—";
     $("#meta-duration").textContent = (s.durationMinutes || "—") + " دقیقه";
     $("#meta-age").textContent = s.ageRange || "—";
-    $("#meta-provider").textContent = providerLabel;
+    $("#meta-provider").textContent = getStorySourceLabel();
 
     if (preview) {
       preview.value = s.storyText || "";
@@ -1100,6 +1105,7 @@
       if (state.audioFullUrl) hydrateStoryAudioPlayer();
       renderVoiceCards($("#voice-search") && $("#voice-search").value);
       updateSummaries();
+      updateHomeStoryCta();
     } catch (e) { /* ignore corrupt data */ }
   }
 
@@ -1124,12 +1130,11 @@
     options = options || {};
     var card = document.createElement("article");
     card.className = "history-card";
-    var providerLabel = PROVIDER_LABELS[item.provider] || item.provider || "—";
     card.innerHTML =
       '<div class="history-card__main">' +
         '<h4>' + (item.title || "قصه بدون عنوان") + '</h4>' +
         '<p class="history-card__meta">' +
-          item.voiceName + ' · ' + (item.durationMinutes || "—") + ' دقیقه · ' + providerLabel +
+          (item.durationMinutes || "—") + ' دقیقه · ' + getStorySourceLabel() +
         '</p>' +
         '<time class="history-card__date">' + formatPersianDate(item.savedAt) + '</time>' +
       '</div>' +
@@ -1161,16 +1166,19 @@
     return card;
   }
 
-  function renderHomeStoriesList() {
-    var section = $("#last-story-section");
-    var list = $("#home-stories-list");
-    if (!section || !list) return;
+  function renderStoriesPanel() {
+    var list = $("#stories-list");
+    var empty = $("#stories-empty");
+    var clearBtn = $("#btn-clear-stories");
+    if (!list) return;
     list.innerHTML = "";
     if (!state.history.length) {
-      section.hidden = true;
+      if (empty) empty.hidden = false;
+      if (clearBtn) clearBtn.hidden = true;
       return;
     }
-    section.hidden = false;
+    if (empty) empty.hidden = true;
+    if (clearBtn) clearBtn.hidden = false;
     state.history.forEach(function (item) {
       list.appendChild(createHistoryCard(item));
     });
@@ -1184,7 +1192,7 @@
     list.innerHTML = "";
     if (!state.history.length) {
       if (empty) empty.hidden = false;
-      renderHomeStoriesList();
+      renderStoriesPanel();
       return;
     }
     if (empty) empty.hidden = true;
@@ -1192,7 +1200,7 @@
       list.appendChild(createHistoryCard(item, { closeDrawer: true }));
     });
     if (window.StorytellingIcons) window.StorytellingIcons.injectAll(list);
-    renderHomeStoriesList();
+    renderStoriesPanel();
   }
 
   function restoreHistoryItem(item) {
@@ -1222,6 +1230,7 @@
     updateSummaries();
     updatePrimaryButton();
     syncChildDisplay();
+    updateHomeStoryCta();
     showToast("قصه بازیابی شد.", "success");
   }
 
@@ -1229,7 +1238,7 @@
     state.history = [];
     localStorage.removeItem(STORAGE_KEYS.history);
     renderHistory();
-    showToast("تاریخچه پاک شد.", "info");
+    showToast("لیست قصه‌ها پاک شد.", "info");
   }
 
   function openHistoryDrawer() {
@@ -1270,7 +1279,6 @@
         interactionPoints: ["با هم نفس عمیق بکشیم.", "ستاره‌های انگشت را بشمار."],
         calmingAction: "سه نفس آهسته و آرام.",
         followUpQuestion: "امشب کدام ستاره را دوست داشتی؟",
-        safetyNote: "این قصه فقط پیشنهاد عمومی است.",
       },
     };
   }
@@ -1286,6 +1294,10 @@
     state.isGeneratingStory = true;
     updatePrimaryButton();
     setStoryCreateLoading(true);
+    var createActions = document.querySelector(".story-create-actions");
+    if (createActions && isMobileLayout()) {
+      createActions.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
     storyGenerationAbort = new AbortController();
     var signal = storyGenerationAbort.signal;
     startCreateProgress();
@@ -1322,7 +1334,11 @@
         formSnapshot: getFormData(),
       });
       completeCreateProgress();
-      showToast("قصه با موفقیت ساخته شد!", "success");
+      if (isMobileLayout()) {
+        await delayWithSignal(700, signal);
+        if (signal.aborted) return;
+      }
+      setStoryCreateLoading(false);
       if (isMobileLayout()) setMobileTab("home");
     } catch (e) {
       if (e.name === "AbortError") {
@@ -1341,7 +1357,9 @@
       storyGenerationAbort = null;
       state.isGeneratingStory = false;
       stopCreateProgress();
-      setStoryCreateLoading(false);
+      if (state.isGeneratingStory === false) {
+        setStoryCreateLoading(false);
+      }
       updatePrimaryButton();
     }
   }
@@ -1700,6 +1718,7 @@
     $("#drawer-close") && $("#drawer-close").addEventListener("click", closeHistoryDrawer);
     $("#drawer-overlay") && $("#drawer-overlay").addEventListener("click", closeHistoryDrawer);
     $("#btn-clear-history") && $("#btn-clear-history").addEventListener("click", clearHistory);
+    $("#btn-clear-stories") && $("#btn-clear-stories").addEventListener("click", clearHistory);
 
     $("#btn-primary-action") && $("#btn-primary-action").addEventListener("click", handlePrimaryAction);
     $("#btn-regenerate-audio") && $("#btn-regenerate-audio").addEventListener("click", function () {
@@ -1736,7 +1755,13 @@
     $("#btn-cancel-story") && $("#btn-cancel-story").addEventListener("click", cancelStoryGeneration);
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
-    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
+    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", function () {
+      if (isMobileLayout()) {
+        setMobileTab("stories");
+      } else {
+        openHistoryDrawer();
+      }
+    });
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
     });

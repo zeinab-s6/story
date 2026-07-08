@@ -39,11 +39,11 @@
         </div>
       </div>
       <div class="header__actions">
-        <button type="button" class="btn btn--ghost btn--icon header__history-btn" id="btn-header-history" aria-label="تاریخچه">
+        <button type="button" class="btn btn--ghost btn--icon header__history-btn" id="btn-header-history" aria-label="لیست قصه‌ها">
           <span class="app-icon app-icon--md" data-icon="clock"></span>
         </button>
         <nav class="header__nav header__nav--desktop" aria-label="ناوبری اصلی">
-          <button type="button" class="btn btn--ghost" id="btn-history">تاریخچه</button>
+          <button type="button" class="btn btn--ghost" id="btn-history">لیست قصه‌ها</button>
           <button type="button" class="btn btn--ghost" id="btn-settings">تنظیمات</button>
         </nav>
       </div>
@@ -56,7 +56,6 @@
     <div class="story-hero__content">
       <h2 class="story-hero__title" id="hero-title">روزت را به قصه تبدیل کن.</h2>
       <p class="story-hero__subtitle" id="hero-subtitle">وقتی قصه ای برای گفتن نداری با لالابای برای کوچولوت یک قصه تازه بساز.</p>
-      <button type="button" class="btn btn--primary btn--sm home-story-cta" id="btn-home-go-story">رفتن به بخش قصه</button>
     </div>
   </section>
 
@@ -164,11 +163,6 @@
 
     <!-- Center Panel -->
     <section class="panel panel--center" aria-label="ویرایشگر و نتیجه قصه">
-      <div class="last-story-banner card glass" id="last-story-section" hidden>
-        <span class="last-story-banner__label">قصه‌های ساخته‌شده</span>
-        <div class="home-stories-list" id="home-stories-list"></div>
-      </div>
-
       <div class="card glass center-card">
         <div class="center-meta">
           <div class="meta-chip"><span class="meta-chip__label">هدف:</span> <span id="summary-goal">—</span></div>
@@ -221,15 +215,28 @@
             <h3>سؤال آخر</h3>
             <p id="story-question" class="story-block">—</p>
           </div>
-          <div class="story-section story-section--safety">
-            <h3>نکته ایمنی</h3>
-            <p id="story-safety" class="story-block">—</p>
-          </div>
 
           <div id="audio-player-wrap" class="audio-player-wrap" hidden></div>
         </article>
       </div>
+
+      <div class="home-footer" id="home-footer" hidden>
+        <button type="button" class="btn btn--primary btn--full home-story-cta" id="btn-home-go-story">رفتن به بخش قصه</button>
+      </div>
     </section>
+
+    <!-- Stories List Panel (mobile) -->
+    <aside class="panel panel--stories" id="stories-panel" aria-label="لیست قصه‌ها">
+      <section class="card glass">
+        <div class="card__header">
+          <h2 class="card__title">لیست قصه‌ها</h2>
+          <p class="card__subtitle">قصه‌های ساخته‌شده را اینجا می‌بینی و می‌توانی دوباره گوش کنی.</p>
+        </div>
+        <p class="stories-empty" id="stories-empty">هنوز قصه‌ای ساخته نشده. اولین قصه را بساز تا اینجا نمایش داده شود.</p>
+        <div class="history-list" id="stories-list"></div>
+        <button type="button" class="btn btn--danger btn--sm stories-clear-btn" id="btn-clear-stories">پاک کردن لیست</button>
+      </section>
+    </aside>
 
     <!-- Right Panel -->
     <aside class="panel panel--right" id="settings-panel" aria-label="تنظیمات صدا">
@@ -362,7 +369,7 @@
       <nav class="mobile-menu card glass" aria-label="منوی پروفایل">
         <button type="button" class="mobile-menu__item" id="mobile-btn-history">
           <span class="mobile-menu__icon app-icon app-icon--md" data-icon="history"></span>
-          <span class="mobile-menu__label">تاریخچه قصه‌ها</span>
+          <span class="mobile-menu__label">لیست قصه‌ها</span>
           <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
         </button>
         <button type="button" class="mobile-menu__item" data-mobile-tab-link="voice">
@@ -408,6 +415,12 @@
         <img src="images/book.png" alt="" width="26" height="26" decoding="async">
       </span>
       <span class="bottom-nav__label">قصه</span>
+    </button>
+    <button type="button" class="bottom-nav__item" data-mobile-tab="stories" aria-label="لیست قصه‌ها">
+      <span class="bottom-nav__icon">
+        <img src="images/heart-plus.png" alt="" width="26" height="26" decoding="async">
+      </span>
+      <span class="bottom-nav__label">لیست قصه‌ها</span>
     </button>
     <button type="button" class="bottom-nav__item" data-mobile-tab="voice" aria-label="صداها">
       <span class="bottom-nav__icon">
@@ -455,9 +468,9 @@
 
   <!-- History Drawer -->
   <div class="overlay" id="drawer-overlay" aria-hidden="true"></div>
-  <aside class="drawer" id="history-drawer" aria-label="تاریخچه قصه‌ها" aria-hidden="true">
+  <aside class="drawer" id="history-drawer" aria-label="لیست قصه‌ها" aria-hidden="true">
     <div class="drawer__header">
-      <h2>تاریخچه قصه‌ها</h2>
+      <h2>لیست قصه‌ها</h2>
       <button type="button" class="btn btn--ghost btn--icon" id="drawer-close" aria-label="بستن">
         <span class="app-icon app-icon--md" data-icon="close"></span>
       </button>
@@ -467,7 +480,7 @@
       <div class="history-list" id="history-list"></div>
     </div>
     <div class="drawer__footer">
-      <button type="button" class="btn btn--danger btn--sm" id="btn-clear-history">پاک کردن تاریخچه</button>
+      <button type="button" class="btn btn--danger btn--sm" id="btn-clear-history">پاک کردن لیست</button>
     </div>
   </aside>
 
