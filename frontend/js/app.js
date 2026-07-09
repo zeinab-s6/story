@@ -146,6 +146,9 @@
   function setMobileTab(tab) {
     mobileTab = tab || "home";
     if (mobileTab === "stories") mobileTab = "home";
+    if (!state.isGeneratingStory && !state.isGeneratingAudio) {
+      resetCreateFlowState();
+    }
     if (isMobileLayout()) {
       document.body.setAttribute("data-mobile-tab", mobileTab);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -154,6 +157,15 @@
       item.classList.toggle("bottom-nav__item--active", item.dataset.mobileTab === mobileTab);
     });
     setupStoryCreateScrollReveal();
+  }
+
+  function resetCreateFlowState() {
+    state.isGeneratingStory = false;
+    state.isGeneratingAudio = false;
+    state.isDownloading = false;
+    setStoryCreateLoading(false);
+    stopCreateProgress();
+    document.body.classList.remove("create-modal-open");
   }
 
   function updateStoryCreateButtonVisibility() {
@@ -320,9 +332,11 @@
   function updateHomeStoryCta() {
     var cta = $("#btn-home-go-story");
     var footer = $("#home-footer");
-    var hidden = !!state.storyResult;
-    if (cta) cta.hidden = hidden;
-    if (footer) footer.hidden = hidden;
+    if (cta) {
+      cta.textContent = state.storyResult ? "ساخت قصه جدید" : "رفتن به بخش قصه";
+      cta.hidden = false;
+    }
+    if (footer) footer.hidden = false;
     updateHomePlayCard();
   }
 
@@ -901,7 +915,7 @@
 
     var loaded = await refreshStoryAudioFromServer(storyId);
     if (!loaded) {
-      if (canRestoreFromServer) {
+      if (canRestoreFromServer && !options.storyId) {
         await restoreLastStoryFromServer();
         storyId = Number(state.storyId);
         if (Number.isFinite(storyId) && storyId > 0) {
@@ -2400,6 +2414,10 @@
   }
 
   function scrollToSettings() {
+    if (isMobileLayout()) {
+      setMobileTab("voice");
+      return;
+    }
     var panel = $("#settings-panel");
     if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -3031,6 +3049,7 @@
   }
 
   async function init() {
+    resetCreateFlowState();
     var hadLeakedStorage = prepareUserScopedStorage();
     getSessionId();
     if (hadLeakedStorage) resetStoryDisplayToEmpty();
