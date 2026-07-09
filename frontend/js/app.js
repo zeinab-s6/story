@@ -560,7 +560,7 @@
   function playGeneratedStoryAudio() {
     if (!state.audioFullUrl) return Promise.resolve(false);
     if (useApiPlayback()) {
-      return hydrateStoryAudioPlayer().then(function (ready) {
+      return hydrateStoryAudioPlayer({ reportError: true }).then(function (ready) {
         if (!ready || !audioElement) return false;
         return audioElement.play()
           .then(function () {
@@ -642,7 +642,7 @@
           error: null,
         });
       }
-      throw new Error("بارگذاری فایل صوتی ناموفق بود.");
+      throw new Error("دریافت فایل صوتی ناموفق بود.");
     }
     return response.blob();
   }
@@ -708,13 +708,18 @@
       return true;
     } catch (e) {
       if (token !== audioHydrationToken) return false;
-      if (state.storyId) {
+      if (state.storyId && options.allowServerRefresh !== false) {
         var refreshed = await refreshStoryAudioFromServer(state.storyId);
         if (refreshed && token === audioHydrationToken) {
-          return hydrateStoryAudioPlayer({ allowServerRefresh: false });
+          return hydrateStoryAudioPlayer({
+            allowServerRefresh: false,
+            reportError: options.reportError === true,
+          });
         }
       }
-      showError(formatApiError(e, "بارگذاری فایل صوتی ناموفق بود."));
+      if (options.reportError) {
+        showError(formatApiError(e, "دریافت فایل صوتی ناموفق بود."));
+      }
       updatePrimaryButton();
       updateDownloadControls();
       updateHomePlayCard();
@@ -1651,6 +1656,7 @@
     if (storyRestorePromise) return storyRestorePromise;
 
     storyRestorePromise = (async function () {
+      clearError();
       ensureStoryAudioUrl();
 
       if (state.storyId && !state.audioFullUrl) {
@@ -1725,9 +1731,10 @@
         state.audioFullUrl = resolveStoryAudioUrl(item.audioUrl);
         renderAudioPlayer();
         if (state.audioFullUrl) {
-          hydrateStoryAudioPlayer().then(function () {
-            playGeneratedStoryAudio();
-          });
+          hydrateStoryAudioPlayer().then(function (ready) {
+          if (!ready && state.storyId) return;
+          playGeneratedStoryAudio();
+        });
         } else {
           playWithVoiceSettings(getVoiceSampleUrl());
         }
@@ -2139,12 +2146,13 @@
         if (!state.storyId) return;
         refreshStoryAudioFromServer(state.storyId).then(function (refreshed) {
           if (refreshed) togglePlayPause();
-          else updateHomePlayCard();
+          else showError("فایل صوتی هنوز آماده نیست. روی آیکن رفرش بالای صفحه بزن.");
+          updateHomePlayCard();
         });
         return;
       }
       if (!audioElement || !audioElement.src) {
-        hydrateStoryAudioPlayer().then(function (ready) {
+        hydrateStoryAudioPlayer({ reportError: true }).then(function (ready) {
           if (ready && audioElement) {
             audioElement.play().catch(function () {});
           }
