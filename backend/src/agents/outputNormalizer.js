@@ -1,5 +1,4 @@
 import { getAgeRange } from '../catalog/ageRules.js';
-import { DEFAULT_SAFETY_NOTE } from '../catalog/safetyRules.js';
 
 const VALID_PARENT_EFFORT = ['low', 'medium', 'high'];
 
@@ -34,7 +33,7 @@ export function normalizeStoryOutput(rawStory, input) {
     interactionPoints: normalizeInteractionPoints(rawStory.interactionPoints),
     calmingAction: trimString(rawStory.calmingAction),
     followUpQuestion: trimString(rawStory.followUpQuestion),
-    safetyNote: trimString(rawStory.safetyNote) || DEFAULT_SAFETY_NOTE,
+    safetyNote: trimString(rawStory.safetyNote),
   };
 }
 

@@ -36,9 +36,9 @@ export function buildStoryPrompt(input) {
     ? `Extra parent context: ${input.extraContext}`
     : '';
 
-  return `You are a personalized story assistant for parents of children aged 0 to 7.
+  return `You are a personalized story assistant for parents of children aged 0 to 8.
 
-Create a short, safe, age-appropriate story in Persian (Farsi).
+Create a short story in Persian (Farsi).
 
 OUTPUT RULES (strict):
 - Output language: Persian (Farsi) only
@@ -46,9 +46,8 @@ OUTPUT RULES (strict):
 - All string values must be in Persian
 
 STORY REQUIREMENTS:
-- Gentle, warm, safe, age-appropriate tone
-- No fear, shame, threat, punishment, violence, medicine, diagnosis, or unsafe actions
-- No scaring, shaming, threatening, pressuring, diagnosing, or medical/psychological advice
+- Gentle, warm tone
+- Respect the parent's context and wording — use their themes and phrases freely
 - Indirect guidance only — no direct preaching or lecturing
 - Match the child's mood: ${input.mood} — ${moodGuidance[input.mood] || ''}
 - Target duration: approximately ${input.durationMinutes} minutes when read aloud

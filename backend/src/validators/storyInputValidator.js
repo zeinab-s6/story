@@ -27,8 +27,8 @@ export function validateStoryInput(body) {
   }
 
   const age = Number(body.age);
-  if (!Number.isInteger(age) || age < 0 || age > 7) {
-    errors.push('سن باید عددی بین ۰ تا ۷ باشد.');
+  if (!Number.isInteger(age) || age < 0 || age > 8) {
+    errors.push('سن باید عددی بین ۰ تا ۸ باشد.');
   }
 
   const interest = sanitizeString(body.interest, 80);

@@ -1,6 +1,5 @@
 import env from '../config/env.js';
 import { buildStoryPrompt } from './promptBuilder.js';
-import { checkStorySafety } from './safetyAgent.js';
 import { normalizeStoryOutput } from './outputNormalizer.js';
 import { generateStoryWithMock } from '../services/mockStoryService.js';
 import { generateStoryWithOpenAI } from '../services/openaiService.js';
@@ -20,9 +19,6 @@ const REQUIRED_STORY_FIELDS = [
   'followUpQuestion',
   'safetyNote',
 ];
-
-const UNSAFE_USER_MESSAGE =
-  'این قصه از نظر ایمنی مناسب نبود. لطفاً ورودی را کمی تغییر دهید.';
 
 function pickStoryFields(story) {
   return {
@@ -104,30 +100,7 @@ export async function createStory(input) {
     throw err;
   }
 
-  const safety = checkStorySafety(story, input.age, input);
   const latencyMs = Date.now() - startTime;
-
-  if (!safety.safe) {
-    saveUsageLog({
-      storyId: null,
-      provider,
-      model,
-      latencyMs,
-      status: 'unsafe',
-      errorMessage: safety.reason,
-    });
-
-    const response = {
-      success: false,
-      error: UNSAFE_USER_MESSAGE,
-    };
-
-    if (env.isDevelopment) {
-      response.details = safety.reason;
-    }
-
-    return response;
-  }
 
   const storyId = saveStoryRequestAndResult(
     input,
