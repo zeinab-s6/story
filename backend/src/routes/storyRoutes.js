@@ -9,6 +9,7 @@ import {
   deleteStoryById,
   getStoriesBySessionId,
   getStoriesByUserIdWithLatestAudio,
+  assignStoryToUser,
 } from '../repositories/storyRepository.js';
 import { saveFeedback } from '../repositories/feedbackRepository.js';
 import {
@@ -41,8 +42,11 @@ function isValidRequestedVoice(voice) {
 function canAccessStory(storyRecord, user) {
   if (!storyRecord) return false;
   if (!user) return true;
-  if (storyRecord.userId == null) return true;
-  return Number(storyRecord.userId) === Number(user.id);
+  if (storyRecord.userId != null) {
+    return Number(storyRecord.userId) === Number(user.id);
+  }
+  assignStoryToUser(storyRecord.id, user.id);
+  return true;
 }
 
 function denyStoryAccess(res) {

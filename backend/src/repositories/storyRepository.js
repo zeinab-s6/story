@@ -140,6 +140,16 @@ function mapStoryRowWithAudio(row) {
   };
 }
 
+export function assignStoryToUser(storyId, userId) {
+  if (!storyId || !userId) return false;
+  const result = db.prepare(`
+    UPDATE stories
+    SET user_id = ?
+    WHERE id = ? AND (user_id IS NULL OR user_id = ?)
+  `).run(userId, storyId, userId);
+  return result.changes > 0;
+}
+
 export function claimUnassignedStoriesForUser(userId, sessionId) {
   if (!userId || !sessionId) return 0;
   const result = claimStoriesForUserStmt.run(userId, sessionId);

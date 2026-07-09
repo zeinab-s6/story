@@ -759,7 +759,7 @@
         }
       }
       if (options.allowServerRefresh !== false) {
-        var synced = await syncStoryAudioFromServer({ forceRefresh: true });
+        var synced = await syncStoryAudioFromServer();
         if (synced && token === audioHydrationToken) {
           return hydrateStoryAudioPlayer({
             allowServerRefresh: false,
@@ -767,8 +767,6 @@
           });
         }
       }
-      state.audioFullUrl = null;
-      state.audioResult = null;
       if (options.reportError) {
         showError(formatApiError(e, "دریافت فایل صوتی ناموفق بود."));
       }
@@ -894,8 +892,6 @@
 
     var loaded = await refreshStoryAudioFromServer(storyId);
     if (!loaded) {
-      state.audioFullUrl = null;
-      state.audioResult = null;
       if (canRestoreFromServer) {
         await restoreLastStoryFromServer();
         storyId = Number(state.storyId);
@@ -905,6 +901,9 @@
       } else if (state.storyResult && Number.isFinite(storyId) && storyId > 0) {
         loaded = await refreshStoryAudioFromServer(storyId);
       }
+      if (!loaded && !state.audioFullUrl) {
+        state.audioResult = null;
+      }
     }
 
     ensureStoryAudioUrl();
@@ -913,6 +912,9 @@
 
   async function ensureStoryAudioReady(options) {
     options = options || {};
+    if (!state.storyResult || !state.storyId) {
+      await restoreHomeStoryForAccount();
+    }
     var synced = await syncStoryAudioFromServer();
     if (!synced || !state.audioFullUrl) return false;
 
@@ -924,6 +926,13 @@
       || (options.forceRefresh === true);
     if (needsHydration) {
       var hydrated = await hydrateStoryAudioPlayer({ reportError: options.reportError === true });
+      if (!hydrated && options.forceRefresh === true) {
+        await refreshStoryAudioFromServer(state.storyId);
+        hydrated = await hydrateStoryAudioPlayer({
+          allowServerRefresh: false,
+          reportError: options.reportError === true,
+        });
+      }
       if (!hydrated) return false;
       element = ensureStoryAudioElement();
     }
@@ -1805,7 +1814,7 @@
         writeUserStorage("lastStory", null);
         return;
       }
-      if (!isStoryOwnedByCurrentUser(data.storyId)) {
+      if (state.history.length && !isStoryOwnedByCurrentUser(data.storyId)) {
         writeUserStorage("lastStory", null);
         return;
       }
@@ -1900,27 +1909,40 @@
   }
 
   async function restoreHomeStoryForAccount() {
-    if (state.storyResult && state.storyId) {
-      return true;
-    }
-
     loadLastStory();
-    if (state.storyResult && state.storyId) {
-      if (!state.audioFullUrl) {
-        await refreshStoryAudioFromServer(state.storyId);
-      }
-      return true;
-    }
 
-    if (state.history.length) {
+    if (!state.storyResult && state.history.length) {
       restoreHistoryItem(state.history[0], { silent: true });
-      if (state.storyId && !state.audioFullUrl) {
-        await refreshStoryAudioFromServer(state.storyId);
-      }
-      return !!state.storyResult;
     }
 
-    return restoreLastStoryFromServer();
+    if (!state.storyResult) {
+      await restoreLastStoryFromServer();
+    }
+
+    if (!state.storyResult || !state.storyId) return false;
+
+    if (!state.audioFullUrl) {
+      await refreshStoryAudioFromServer(state.storyId);
+    }
+
+    if (!state.audioFullUrl) {
+      await restoreLastStoryFromServer();
+    }
+
+    saveLastStory();
+    renderStoryCard();
+    renderAudioPlayer();
+    if (state.audioFullUrl) {
+      await hydrateStoryAudioPlayer();
+    }
+    renderVoiceCards($("#voice-search") && $("#voice-search").value);
+    updateSummaries();
+    updateHomeStoryCta();
+    updateCenterCardState();
+    updatePrimaryButton();
+    updateDownloadControls();
+    updateHomePlayCard();
+    return true;
   }
 
   async function restoreUserStoryState() {
@@ -1928,9 +1950,7 @@
 
     storyRestorePromise = (async function () {
       clearError();
-      if (!state.storyResult) {
-        await restoreHomeStoryForAccount();
-      }
+      await restoreHomeStoryForAccount();
       await syncStoryAudioFromServer();
 
       if (state.audioFullUrl) {
@@ -2867,10 +2887,7 @@
           syncChildDisplay();
           syncProfileAvatarPicker();
           syncHistoryFromServer().then(function () {
-            restoreHomeStoryForAccount().then(function () {
-              if (!state.storyResult) updateHero(null);
-              restoreUserStoryState();
-            });
+            restoreUserStoryState();
           });
         }
       })
@@ -2929,7 +2946,6 @@
     renderVoiceCards();
     renderSliders();
     await syncHistoryFromServer();
-    await restoreHomeStoryForAccount();
     await restoreUserStoryState();
     if (!state.storyResult) updateHero(null);
     updateSummaries();
