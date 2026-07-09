@@ -116,6 +116,8 @@
   let createProgressValue = 0;
   let storyGenerationAbort = null;
   let storyCreateScrollObserver = null;
+  let homeTimelineSeeking = false;
+  let homeTimelineBound = false;
 
   var CREATE_LOADING_HINTS = [
     "لطفاً چند لحظه صبر کنید...",
@@ -331,6 +333,7 @@
     card.hidden = !show;
     if (!show) {
       if (playBtn) playBtn.classList.remove("home-play-card__play--playing");
+      resetHomePlayTimeline();
       return;
     }
 
@@ -347,6 +350,114 @@
     if (playIcon && window.StorytellingIcons) {
       window.StorytellingIcons.setPlayIcon(playIcon, state.isPlaying);
     }
+    updateHomePlayTimeline();
+  }
+
+  function formatAudioTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "۰:۰۰";
+    var mins = Math.floor(seconds / 60);
+    var secs = Math.floor(seconds % 60);
+    return mins.toLocaleString("fa-IR") + ":" + secs.toLocaleString("fa-IR", { minimumIntegerDigits: 2 });
+  }
+
+  function getStoryAudioDuration() {
+    if (audioElement && Number.isFinite(audioElement.duration) && audioElement.duration > 0) {
+      return audioElement.duration;
+    }
+    if (state.storyResult && state.storyResult.durationMinutes) {
+      return Number(state.storyResult.durationMinutes) * 60;
+    }
+    return 0;
+  }
+
+  function updateHomePlayTimeline() {
+    var seek = $("#home-play-seek");
+    var currentEl = $("#home-play-time-current");
+    var durationEl = $("#home-play-time-duration");
+    if (!seek || !currentEl || !durationEl) return;
+
+    var duration = getStoryAudioDuration();
+    var current = audioElement && Number.isFinite(audioElement.currentTime) ? audioElement.currentTime : 0;
+
+    durationEl.textContent = duration > 0 ? formatAudioTime(duration) : "۰:۰۰";
+    currentEl.textContent = formatAudioTime(current);
+
+    if (!homeTimelineSeeking) {
+      var progress = duration > 0 ? Math.min(100, Math.max(0, (current / duration) * 100)) : 0;
+      var value = Math.round((current / (duration || 1)) * 1000);
+      seek.value = String(Math.min(1000, Math.max(0, value)));
+      seek.setAttribute("aria-valuenow", seek.value);
+      seek.style.setProperty("--seek-progress", progress + "%");
+    }
+  }
+
+  function resetHomePlayTimeline() {
+    homeTimelineSeeking = false;
+    var seek = $("#home-play-seek");
+    if (seek) {
+      seek.value = "0";
+      seek.setAttribute("aria-valuenow", "0");
+      seek.style.setProperty("--seek-progress", "0%");
+    }
+    updateHomePlayTimeline();
+  }
+
+  function seekHomePlayTimeline() {
+    var seek = $("#home-play-seek");
+    if (!seek || !state.audioFullUrl) return;
+
+    var duration = getStoryAudioDuration();
+    if (!duration) return;
+
+    var nextTime = (Number(seek.value) / 1000) * duration;
+    var previewTime = Math.min(duration, Math.max(0, nextTime));
+    var currentEl = $("#home-play-time-current");
+    if (currentEl) currentEl.textContent = formatAudioTime(previewTime);
+    seek.style.setProperty("--seek-progress", ((previewTime / duration) * 100) + "%");
+
+    if (!audioElement || !audioElement.src) {
+      hydrateStoryAudioPlayer().then(function (ready) {
+        if (!ready || !audioElement) return;
+        audioElement.currentTime = previewTime;
+        updateHomePlayTimeline();
+      });
+      return;
+    }
+
+    audioElement.currentTime = previewTime;
+    updateHomePlayTimeline();
+  }
+
+  function bindHomePlayTimelineControls() {
+    if (homeTimelineBound) return;
+    homeTimelineBound = true;
+
+    var seek = $("#home-play-seek");
+    if (!seek) return;
+
+    seek.addEventListener("pointerdown", function () {
+      homeTimelineSeeking = true;
+    });
+    seek.addEventListener("pointerup", function () {
+      homeTimelineSeeking = false;
+      seekHomePlayTimeline();
+    });
+    seek.addEventListener("input", function () {
+      homeTimelineSeeking = true;
+      seekHomePlayTimeline();
+    });
+    seek.addEventListener("change", function () {
+      homeTimelineSeeking = false;
+      seekHomePlayTimeline();
+    });
+  }
+
+  function bindStoryAudioTimelineEvents(el) {
+    if (!el || el.dataset.homeTimelineBound === "1") return;
+    el.dataset.homeTimelineBound = "1";
+    ["timeupdate", "loadedmetadata", "durationchange", "pause", "ended", "seeked"].forEach(function (evt) {
+      el.addEventListener(evt, updateHomePlayTimeline);
+    });
   }
 
   function getStorySourceLabel() {
@@ -584,6 +695,8 @@
         label.textContent = "فایل صوتی آماده است — می‌توانی آفلاین گوش بدهی یا ذخیره کنی.";
       }
       updateDownloadControls();
+      bindStoryAudioTimelineEvents(audioElement);
+      updateHomePlayTimeline();
       return true;
     } catch (e) {
       if (token !== audioHydrationToken) return false;
@@ -619,6 +732,7 @@
       '</div>';
     audioElement = $("#story-audio");
     if (audioElement) {
+      bindStoryAudioTimelineEvents(audioElement);
       audioElement.addEventListener("play", function () {
         syncNativeBackgroundAmbience(true);
         syncPlayingState(true);
@@ -663,11 +777,16 @@
 
   function updateDownloadControls() {
     var hasAudio = !!state.audioFullUrl;
+    var disabled = !hasAudio || state.isGeneratingAudio;
     var footerBtn = $("#btn-download");
+    var homeBtn = $("#btn-home-download");
     var regenBtn = $("#btn-regenerate-audio");
     if (footerBtn) {
       footerBtn.hidden = !hasAudio;
-      footerBtn.disabled = !hasAudio || state.isGeneratingAudio;
+      footerBtn.disabled = disabled;
+    }
+    if (homeBtn) {
+      homeBtn.disabled = disabled;
     }
     if (regenBtn) {
       regenBtn.hidden = !state.storyResult;
@@ -1183,6 +1302,7 @@
       wrap.innerHTML = "";
       audioElement = null;
       revokeStoryAudioBlobUrl();
+      resetHomePlayTimeline();
       updateDownloadControls();
       updateCenterCardState();
       updateHomePlayCard();
@@ -1191,6 +1311,7 @@
     if (useApiPlayback()) {
       renderAudioPlayerShell();
       updateCenterCardState();
+      updateDownloadControls();
       updateHomePlayCard();
       return;
     }
@@ -1642,6 +1763,7 @@
       } finally {
         state.isGeneratingAudio = false;
         updatePrimaryButton();
+        updateDownloadControls();
       }
     }
 
@@ -1689,6 +1811,7 @@
     } finally {
       state.isGeneratingAudio = false;
       updatePrimaryButton();
+      updateDownloadControls();
     }
   }
 
@@ -1957,6 +2080,10 @@
       if (!state.audioFullUrl) return;
       togglePlayPause();
     });
+
+    bindHomePlayTimelineControls();
+
+    $("#btn-home-download") && $("#btn-home-download").addEventListener("click", handleDownload);
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);

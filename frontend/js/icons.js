@@ -22,6 +22,7 @@
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
     play: '<path d="M8 5v14l11-7-11-7z"/>',
     pause: '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>',
+    download: '<path d="M12 3v10M7 13l5 5 5-5"/><path d="M5 21h14"/>',
     check: '<path d="M5 12l4 4 10-10"/>',
   };
 

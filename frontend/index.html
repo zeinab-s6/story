@@ -180,12 +180,38 @@
         </div>
 
         <div class="home-play-card" id="home-play-card" hidden>
-          <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
-            <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
-          </button>
-          <div class="home-play-card__body">
-            <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
-            <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
+          <div class="home-play-card__main">
+            <div class="home-play-card__actions">
+              <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
+                <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
+              </button>
+              <button type="button" class="home-play-card__download" id="btn-home-download" aria-label="دانلود فایل صوتی برای استفاده آفلاین">
+                <span class="home-play-card__download-icon app-icon app-icon--md" data-icon="download"></span>
+              </button>
+            </div>
+            <div class="home-play-card__body">
+              <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
+              <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
+            </div>
+          </div>
+          <div class="home-play-card__timeline" id="home-play-timeline">
+            <input
+              type="range"
+              class="home-play-card__seek"
+              id="home-play-seek"
+              min="0"
+              max="1000"
+              value="0"
+              step="1"
+              aria-label="جابه‌جایی در قصه"
+              aria-valuemin="0"
+              aria-valuemax="1000"
+              aria-valuenow="0"
+            >
+            <div class="home-play-card__times" aria-hidden="true">
+              <span class="home-play-card__time" id="home-play-time-current">۰:۰۰</span>
+              <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
+            </div>
           </div>
         </div>
 
