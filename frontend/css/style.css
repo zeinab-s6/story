@@ -3073,8 +3073,8 @@ body.app-shell.create-modal-open .bottom-nav {
 
 .home-play-card__download {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 1.5px solid rgba(219, 39, 119, 0.28);
   background: #fff;
@@ -3082,14 +3082,14 @@ body.app-shell.create-modal-open .bottom-nav {
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.12);
+  box-shadow: 0 6px 20px rgba(219, 39, 119, 0.12);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .home-play-card__download:hover:not(:disabled) {
   transform: scale(1.05);
   background: #FFF5F9;
-  box-shadow: 0 6px 18px rgba(219, 39, 119, 0.18);
+  box-shadow: 0 8px 24px rgba(219, 39, 119, 0.18);
 }
 
 .home-play-card__download:active:not(:disabled) {
