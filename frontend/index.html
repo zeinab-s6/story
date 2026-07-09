@@ -211,10 +211,27 @@
               <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
             </div>
           </div>
-          <button type="button" class="btn btn--secondary btn--sm home-play-card__download-btn" id="btn-home-download-audio" hidden>
-            دانلود صدا
-          </button>
         </div>
+
+        <section class="home-download-card" id="home-download-card" hidden aria-label="دانلود صدای قصه">
+          <div class="home-download-card__header">
+            <div class="home-download-card__icon" aria-hidden="true">
+              <span class="app-icon app-icon--md" data-icon="download" id="home-download-icon"></span>
+            </div>
+            <div class="home-download-card__intro">
+              <h3 class="home-download-card__title">دانلود صدای قصه</h3>
+              <p class="home-download-card__meta" id="home-download-meta">فایل صوتی را ذخیره کن و آفلاین گوش بده.</p>
+            </div>
+          </div>
+          <div class="home-download-card__file">
+            <span class="home-download-card__file-label">نام فایل</span>
+            <span class="home-download-card__file-name" id="home-download-filename">—</span>
+          </div>
+          <button type="button" class="home-download-card__action" id="btn-home-download-audio">
+            <span class="home-download-card__action-icon app-icon app-icon--sm" data-icon="download" aria-hidden="true"></span>
+            <span class="home-download-card__action-text" id="home-download-action-text">دریافت فایل صوتی</span>
+          </button>
+        </section>
 
         <div id="center-empty">
           <div class="editor-wrap">

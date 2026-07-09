@@ -360,14 +360,41 @@
     if (playIcon && window.StorytellingIcons) {
       window.StorytellingIcons.setPlayIcon(playIcon, state.isPlaying);
     }
-    var downloadBtn = $("#btn-home-download-audio");
-    if (downloadBtn) {
-      var canDownload = hasStoryAudioAvailable();
-      downloadBtn.hidden = !show || !canDownload;
-      downloadBtn.disabled = !canDownload || state.isGeneratingAudio || state.isDownloading;
-      downloadBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
-    }
     updateHomePlayTimeline();
+    updateHomeDownloadCard();
+  }
+
+  function updateHomeDownloadCard() {
+    var section = $("#home-download-card");
+    if (!section) return;
+
+    var canDownload = !!(state.storyResult && hasStoryAudioAvailable());
+    section.hidden = !canDownload;
+
+    if (!canDownload) return;
+
+    var voice = getSelectedVoice();
+    var filename = getAudioDownloadFilename();
+    var metaEl = $("#home-download-meta");
+    var filenameEl = $("#home-download-filename");
+    var actionText = $("#home-download-action-text");
+    var actionBtn = $("#btn-home-download-audio");
+
+    if (metaEl) {
+      metaEl.textContent = "صدای " + voice.nameFa + " · آماده برای ذخیره روی گوشی یا کامپیوتر";
+    }
+    if (filenameEl) filenameEl.textContent = filename;
+    if (actionText) {
+      actionText.textContent = state.isDownloading ? "در حال آماده‌سازی..." : "دریافت فایل صوتی";
+    }
+    if (actionBtn) {
+      actionBtn.disabled = state.isGeneratingAudio || state.isDownloading;
+      actionBtn.setAttribute("aria-busy", state.isDownloading ? "true" : "false");
+    }
+
+    if (window.StorytellingIcons) {
+      window.StorytellingIcons.injectAll(section);
+    }
   }
 
   function formatAudioTime(seconds) {
@@ -927,14 +954,9 @@
   function updateDownloadControls() {
     var canUseAudio = hasStoryAudioAvailable() || !!state.storyId;
     var disabled = !canUseAudio || state.isGeneratingAudio || state.isDownloading;
-    var homeBtn = $("#btn-home-download-audio");
     var inlineBtn = $("#btn-download-inline");
     var regenBtn = $("#btn-regenerate-audio");
-    if (homeBtn) {
-      homeBtn.hidden = !hasStoryAudioAvailable();
-      homeBtn.disabled = disabled;
-      homeBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
-    }
+    updateHomeDownloadCard();
     if (inlineBtn) {
       inlineBtn.disabled = disabled;
       inlineBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
