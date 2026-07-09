@@ -381,11 +381,11 @@
     var actionBtn = $("#btn-home-download-audio");
 
     if (metaEl) {
-      metaEl.textContent = "صدای " + voice.nameFa + " · آماده برای ذخیره روی گوشی یا کامپیوتر";
+      metaEl.textContent = "صدای " + voice.nameFa + " · فایل MP3 برای ذخیره روی گوشی یا کامپیوتر";
     }
     if (filenameEl) filenameEl.textContent = filename;
     if (actionText) {
-      actionText.textContent = state.isDownloading ? "در حال آماده‌سازی..." : "دریافت فایل صوتی";
+      actionText.textContent = state.isDownloading ? "در حال آماده‌سازی..." : "دریافت فایل MP3";
     }
     if (actionBtn) {
       actionBtn.disabled = state.isGeneratingAudio || state.isDownloading;
@@ -743,7 +743,7 @@
       return true;
     } catch (e) {
       if (token !== audioHydrationToken) return false;
-      var failedStoryId = Number(state.storyId);
+      var failedStoryId = getActiveAudioStoryId();
       revokeStoryAudioBlobUrl();
       if (audioElement) {
         audioElement.removeAttribute("src");
@@ -877,18 +877,27 @@
     if (mockFrontendMode || !window.StorytellingAPI) return false;
 
     var canRestoreFromServer = hasUserStoryData();
-    var storyId = Number(state.storyId);
+    var storyId = options.storyId ? Number(options.storyId) : getActiveAudioStoryId();
 
     if ((!state.storyResult || !state.storyId) && canRestoreFromServer) {
       await restoreLastStoryFromServer();
-      storyId = Number(state.storyId);
+      if (!options.storyId) storyId = getActiveAudioStoryId();
     }
 
     if ((!Number.isFinite(storyId) || storyId <= 0) && canRestoreFromServer) {
       await restoreLastStoryFromServer();
-      storyId = Number(state.storyId);
+      storyId = options.storyId ? Number(options.storyId) : getActiveAudioStoryId();
     }
     if (!Number.isFinite(storyId) || storyId <= 0) return false;
+
+    if (Number(state.storyId) !== storyId && state.history.length) {
+      var historyItem = state.history.find(function (item) {
+        return Number(item.storyId) === storyId;
+      });
+      if (historyItem) {
+        activateHistoryItemForPlayback(historyItem, { persist: false });
+      }
+    }
 
     var loaded = await refreshStoryAudioFromServer(storyId);
     if (!loaded) {
@@ -915,7 +924,8 @@
     if (!state.storyResult || !state.storyId) {
       await restoreHomeStoryForAccount();
     }
-    var synced = await syncStoryAudioFromServer();
+    var targetStoryId = options.storyId ? Number(options.storyId) : getActiveAudioStoryId();
+    var synced = await syncStoryAudioFromServer({ storyId: targetStoryId });
     if (!synced || !state.audioFullUrl) return false;
 
     var element = ensureStoryAudioElement();
@@ -927,7 +937,8 @@
     if (needsHydration) {
       var hydrated = await hydrateStoryAudioPlayer({ reportError: options.reportError === true });
       if (!hydrated && options.forceRefresh === true) {
-        await refreshStoryAudioFromServer(state.storyId);
+        var refreshId = getActiveAudioStoryId();
+        if (refreshId) await refreshStoryAudioFromServer(refreshId);
         hydrated = await hydrateStoryAudioPlayer({
           allowServerRefresh: false,
           reportError: options.reportError === true,
@@ -949,12 +960,7 @@
   }
 
   function getAudioDownloadFilename() {
-    var ext = "mp3";
-    if (state.audioResult && state.audioResult.format) {
-      ext = state.audioResult.format;
-    } else if (state.audioFullUrl && state.audioFullUrl.indexOf(".wav") !== -1) {
-      ext = "wav";
-    }
+    var ext = state.audioSourceType === "sample" ? "wav" : "mp3";
     var voice = getSelectedVoice();
     var slug = voice.id || "voice";
     return "lalaBye-" + (state.storyId || "sample") + "-" + slug + "." + ext;
@@ -1275,6 +1281,20 @@
     return window.StorytellingAPI
       ? window.StorytellingAPI.buildFullAudioUrl(normalized)
       : normalized;
+  }
+
+  function parseStoryIdFromAudioUrl(url) {
+    var match = String(url || "").match(/\/api\/stories\/(\d+)\/audio\//);
+    return match ? Number(match[1]) : null;
+  }
+
+  function getActiveAudioStoryId() {
+    var fromUrl = parseStoryIdFromAudioUrl(
+      state.audioFullUrl || (state.audioResult && state.audioResult.audioUrl)
+    );
+    if (Number.isFinite(fromUrl) && fromUrl > 0) return fromUrl;
+    var storyId = Number(state.storyId);
+    return Number.isFinite(storyId) && storyId > 0 ? storyId : null;
   }
 
   function findVoiceIdByBackendVoice(backendVoice) {
@@ -2037,13 +2057,14 @@
         map[id] = item;
         return;
       }
-      if (item.audioUrl && !existing.audioUrl) {
-        map[id] = Object.assign({}, existing, {
-          audioUrl: item.audioUrl,
-          voiceId: item.voiceId || existing.voiceId,
-          voiceName: item.voiceName || existing.voiceName,
-        });
-      }
+      var merged = Object.assign({}, existing, {
+        voiceId: item.voiceId || existing.voiceId,
+        voiceName: item.voiceName || existing.voiceName,
+        formSnapshot: item.formSnapshot || existing.formSnapshot,
+      });
+      if (item.audioUrl) merged.audioUrl = item.audioUrl;
+      else if (existing.audioUrl) merged.audioUrl = existing.audioUrl;
+      map[id] = merged;
     });
 
     return Object.values(map)
@@ -2112,10 +2133,105 @@
   }
 
   function addToHistory(item) {
+    state.history = state.history.filter(function (existing) {
+      return Number(existing.storyId) !== Number(item.storyId);
+    });
     state.history.unshift(item);
     if (state.history.length > 30) state.history = state.history.slice(0, 30);
     writeUserStorage("history", JSON.stringify(state.history));
     renderHistory();
+  }
+
+  function persistActiveStoryInHistory() {
+    if (!state.storyId || !state.storyResult) return;
+
+    var voice = getSelectedVoice();
+    var storedAudio = normalizeStoryAudioUrlForStorage(state.audioFullUrl);
+    var existingIndex = state.history.findIndex(function (item) {
+      return Number(item.storyId) === Number(state.storyId);
+    });
+    var existing = existingIndex >= 0 ? state.history[existingIndex] : null;
+    var entry = {
+      storyId: state.storyId,
+      provider: state.provider,
+      story: state.storyResult,
+      title: state.storyResult.title,
+      voiceId: state.audioVoiceId || (existing && existing.voiceId) || voice.id,
+      voiceName: (existing && existing.voiceName) || voice.nameFa,
+      durationMinutes: state.storyResult.durationMinutes,
+      audioUrl: storedAudio || (existing && existing.audioUrl) || null,
+      savedAt: (existing && existing.savedAt) || new Date().toISOString(),
+      formSnapshot: existing && existing.formSnapshot ? existing.formSnapshot : getFormData(),
+    };
+
+    if (existingIndex >= 0) {
+      state.history[existingIndex] = Object.assign({}, existing, entry);
+    } else {
+      state.history.unshift(entry);
+      if (state.history.length > 30) state.history = state.history.slice(0, 30);
+    }
+    writeUserStorage("history", JSON.stringify(state.history));
+  }
+
+  function activateHistoryItemForPlayback(item, options) {
+    options = options || {};
+    if (!item) return false;
+
+    state.storyId = item.storyId;
+    state.provider = item.provider;
+    state.storyResult = item.story;
+    state.selectedVoiceId = item.voiceId || state.selectedVoiceId;
+    state.audioVoiceId = item.voiceId || null;
+    state.audioResult = null;
+    state.audioFullUrl = resolveStoryAudioUrl(
+      normalizeStoryAudioUrlForStorage(item.audioUrl) || item.audioUrl
+    );
+
+    renderStoryCard();
+    renderAudioPlayer();
+    updateSummaries();
+    updatePrimaryButton();
+    updateDownloadControls();
+    updateHomePlayCard();
+    updateCenterCardState();
+
+    if (options.persist !== false) {
+      saveLastStory();
+    }
+    return true;
+  }
+
+  async function playHistoryItem(item, options) {
+    options = options || {};
+    stopVoicePlayback();
+    if (audioElement) audioElement.pause();
+    if (options.closeDrawer) closeHistoryDrawer();
+
+    activateHistoryItemForPlayback(item);
+
+    if (!state.audioFullUrl && state.storyId) {
+      var refreshed = await refreshStoryAudioFromServer(state.storyId);
+      if (refreshed) {
+        syncHistoryAudioUrl(
+          state.storyId,
+          normalizeStoryAudioUrlForStorage(state.audioFullUrl)
+        );
+        saveLastStory();
+      }
+    }
+
+    if (!state.audioFullUrl) {
+      if (!useApiPlayback()) {
+        await playWithVoiceSettings(getVoiceSampleUrl());
+        return;
+      }
+      showToast("هنوز صدای این قصه آماده نیست.", "info");
+      return;
+    }
+
+    var ready = await hydrateStoryAudioPlayer({ reportError: true });
+    if (!ready) return;
+    await playGeneratedStoryAudio();
   }
 
   function loadHistory() {
@@ -2141,25 +2257,13 @@
         '<time class="history-card__date">' + formatPersianDate(item.savedAt) + '</time>' +
       '</div>' +
       '<div class="history-card__actions">' +
-        ((item.audioUrl || !useApiPlayback()) ? '<button type="button" class="btn btn--ghost btn--icon btn--sm history-play" aria-label="پخش">' + (window.StorytellingIcons ? window.StorytellingIcons.render("play", "app-icon--sm") : "") + '</button>' : '') +
+        ((item.storyId && (item.audioUrl || useApiPlayback())) || !useApiPlayback() ? '<button type="button" class="btn btn--ghost btn--icon btn--sm history-play" aria-label="پخش">' + (window.StorytellingIcons ? window.StorytellingIcons.render("play", "app-icon--sm") : "") + '</button>' : '') +
         '<button type="button" class="btn btn--secondary btn--sm history-restore">بازیابی</button>' +
       '</div>';
     var playBtn = card.querySelector(".history-play");
     if (playBtn) {
       playBtn.addEventListener("click", function () {
-        stopVoicePlayback();
-        if (audioElement) audioElement.pause();
-        state.audioFullUrl = resolveStoryAudioUrl(item.audioUrl);
-        renderAudioPlayer();
-        if (state.audioFullUrl) {
-          hydrateStoryAudioPlayer().then(function (ready) {
-          if (!ready && state.storyId) return;
-          playGeneratedStoryAudio();
-        });
-        } else {
-          playWithVoiceSettings(getVoiceSampleUrl());
-        }
-        if (options.closeDrawer) closeHistoryDrawer();
+        playHistoryItem(item, { closeDrawer: options.closeDrawer });
       });
     }
     card.querySelector(".history-restore").addEventListener("click", function () {
@@ -2341,6 +2445,7 @@
     startCreateProgress();
 
     try {
+      persistActiveStoryInHistory();
       var result;
       if (mockFrontendMode) {
         await delayWithSignal(800, signal);
@@ -2460,7 +2565,7 @@
     var voice = voiceOverride || getSelectedVoice();
     return {
       voice: voice.backendVoice,
-      format: "wav",
+      format: "mp3",
       narrationText: buildNarrationText(),
       backgroundAmbience: !!state.advanced.backgroundAmbience,
     };
@@ -2488,11 +2593,8 @@
         state.audioVoiceId = getSelectedVoice().id;
         renderAudioPlayer();
         saveLastStory();
-        if (state.history.length && state.history[0].storyId === state.storyId) {
-          state.history[0].audioUrl = normalizeStoryAudioUrlForStorage(state.audioFullUrl);
-          writeUserStorage("history", JSON.stringify(state.history));
-          renderHistory();
-        }
+        syncHistoryAudioUrl(state.storyId, normalizeStoryAudioUrlForStorage(state.audioFullUrl));
+        renderHistory();
         if (!options.suppressToast) {
           showToast("نمونه صدا آماده است — اسلایدرها را تغییر بده و پخش کن.", "success");
         }
@@ -2520,7 +2622,7 @@
         await new Promise(function (r) { setTimeout(r, 1000); });
         result = {
           success: true,
-          audio: { id: 1, storyId: state.storyId, voice: payload.voice, format: "wav", audioUrl: "" },
+          audio: { id: 1, storyId: state.storyId, voice: payload.voice, format: "mp3", audioUrl: "" },
         };
       } else {
         result = await window.StorytellingAPI.generateStoryAudio(state.storyId, payload);
@@ -2535,11 +2637,8 @@
       ensureStoryAudioUrl();
       renderAudioPlayer();
       saveLastStory();
-      if (state.history.length && state.history[0].storyId === state.storyId) {
-        state.history[0].audioUrl = normalizeStoryAudioUrlForStorage(state.audioFullUrl);
-        writeUserStorage("history", JSON.stringify(state.history));
-        renderHistory();
-      }
+      syncHistoryAudioUrl(state.storyId, normalizeStoryAudioUrlForStorage(state.audioFullUrl));
+      renderHistory();
       updateCenterCardState();
       updateHomePlayCard();
       var ready = await hydrateStoryAudioPlayer();
@@ -2618,6 +2717,14 @@
     if (!ready) {
       showToast("هنوز فایل صوتی آماده نیست. چند لحظه صبر کن و دوباره بزن.", "info");
       return;
+    }
+
+    if (useApiPlayback() && state.audioResult && state.audioResult.format !== "mp3") {
+      var converted = await handleGenerateAudio({ suppressToast: true });
+      if (!converted || !state.audioResult || state.audioResult.format !== "mp3") {
+        showToast("آماده‌سازی فایل MP3 ناموفق بود. دوباره تلاش کن.", "error");
+        return;
+      }
     }
 
     var filename = getAudioDownloadFilename();
