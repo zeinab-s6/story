@@ -186,9 +186,6 @@
               <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
                 <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
               </button>
-              <button type="button" class="home-play-card__download" id="btn-home-download" aria-label="دانلود فایل صوتی برای استفاده آفلاین">
-                <span class="home-play-card__download-icon app-icon app-icon--md" data-icon="download"></span>
-              </button>
             </div>
             <div class="home-play-card__body">
               <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
@@ -214,6 +211,9 @@
               <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
             </div>
           </div>
+          <button type="button" class="btn btn--secondary btn--sm home-play-card__download-btn" id="btn-home-download-audio" hidden>
+            دانلود صدا
+          </button>
         </div>
 
         <div id="center-empty">
@@ -476,7 +476,6 @@
           <span id="btn-primary-label">ساخت قصه</span>
         </button>
         <button type="button" class="btn btn--ghost btn--sm" id="btn-regenerate-audio">ساخت دوباره صدا</button>
-        <button type="button" class="btn btn--ghost btn--sm" id="btn-download" aria-label="دانلود فایل صوتی" hidden disabled>دانلود MP3</button>
       </div>
       </div>
     </div>

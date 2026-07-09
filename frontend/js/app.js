@@ -360,6 +360,13 @@
     if (playIcon && window.StorytellingIcons) {
       window.StorytellingIcons.setPlayIcon(playIcon, state.isPlaying);
     }
+    var downloadBtn = $("#btn-home-download-audio");
+    if (downloadBtn) {
+      var canDownload = hasStoryAudioAvailable();
+      downloadBtn.hidden = !show || !canDownload;
+      downloadBtn.disabled = !canDownload || state.isGeneratingAudio || state.isDownloading;
+      downloadBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
+    }
     updateHomePlayTimeline();
   }
 
@@ -920,22 +927,13 @@
   function updateDownloadControls() {
     var canUseAudio = hasStoryAudioAvailable() || !!state.storyId;
     var disabled = !canUseAudio || state.isGeneratingAudio || state.isDownloading;
-    var footerBtn = $("#btn-download");
-    var homeBtn = $("#btn-home-download");
+    var homeBtn = $("#btn-home-download-audio");
     var inlineBtn = $("#btn-download-inline");
     var regenBtn = $("#btn-regenerate-audio");
-    if (footerBtn) {
-      footerBtn.hidden = !canUseAudio;
-      footerBtn.disabled = disabled;
-      footerBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود MP3";
-    }
     if (homeBtn) {
+      homeBtn.hidden = !hasStoryAudioAvailable();
       homeBtn.disabled = disabled;
-      homeBtn.setAttribute("aria-busy", state.isDownloading ? "true" : "false");
-      homeBtn.setAttribute(
-        "aria-label",
-        state.isDownloading ? "در حال آماده‌سازی دانلود" : "دانلود فایل صوتی برای استفاده آفلاین"
-      );
+      homeBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
     }
     if (inlineBtn) {
       inlineBtn.disabled = disabled;
@@ -1425,7 +1423,7 @@
     var centerCard = document.querySelector(".panel--center .center-card");
     if (!centerCard) return;
     centerCard.classList.toggle("center-card--has-story", !!state.storyResult);
-    centerCard.classList.toggle("center-card--has-audio", shouldShowHomePlayCard());
+    centerCard.classList.toggle("center-card--has-audio", !!(state.storyResult && hasStoryAudioAvailable()));
   }
 
   function startCreateAudioProgress() {
@@ -1981,6 +1979,38 @@
     return [];
   }
 
+  function mergeHistoryItems(serverItems, localItems) {
+    var map = {};
+
+    serverItems.forEach(function (item) {
+      if (!item || item.storyId == null) return;
+      map[Number(item.storyId)] = item;
+    });
+
+    localItems.forEach(function (item) {
+      if (!item || item.storyId == null) return;
+      var id = Number(item.storyId);
+      var existing = map[id];
+      if (!existing) {
+        map[id] = item;
+        return;
+      }
+      if (item.audioUrl && !existing.audioUrl) {
+        map[id] = Object.assign({}, existing, {
+          audioUrl: item.audioUrl,
+          voiceId: item.voiceId || existing.voiceId,
+          voiceName: item.voiceName || existing.voiceName,
+        });
+      }
+    });
+
+    return Object.values(map)
+      .sort(function (a, b) {
+        return new Date(b.savedAt || 0).getTime() - new Date(a.savedAt || 0).getTime();
+      })
+      .slice(0, 30);
+  }
+
   async function syncHistoryFromServer() {
     if (!getCurrentUserId()) {
       state.history = [];
@@ -2013,10 +2043,20 @@
       return state.history.length > 0;
     }
 
-    state.history = stories
+    var serverHistory = stories
       .map(storyRecordToHistoryItem)
-      .filter(Boolean)
-      .slice(0, 30);
+      .filter(Boolean);
+
+    var localHistory = [];
+    try {
+      var localRaw = readUserStorage("history");
+      localHistory = localRaw ? JSON.parse(localRaw) : [];
+      if (!Array.isArray(localHistory)) localHistory = [];
+    } catch (e) {
+      localHistory = [];
+    }
+
+    state.history = mergeHistoryItems(serverHistory, localHistory);
 
     writeUserStorage("history", JSON.stringify(state.history));
 
@@ -2737,7 +2777,6 @@
       renderAudioPlayer();
       handleGenerateAudio({ autoPlay: true });
     });
-    $("#btn-download") && $("#btn-download").addEventListener("click", handleDownload);
 
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeHistoryDrawer();
@@ -2777,7 +2816,7 @@
 
     bindHomePlayTimelineControls();
 
-    $("#btn-home-download") && $("#btn-home-download").addEventListener("click", handleDownload);
+    $("#btn-home-download-audio") && $("#btn-home-download-audio").addEventListener("click", handleDownload);
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);

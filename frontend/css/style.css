@@ -3115,40 +3115,15 @@ body.app-shell.create-modal-open .bottom-nav {
   height: 18px;
 }
 
-.home-play-card__download {
-  flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid rgba(219, 39, 119, 0.22);
-  background: #fff;
-  color: var(--accent);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 3px 12px rgba(219, 39, 119, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+.home-play-card__download-btn {
+  width: 100%;
+  margin-top: 4px;
+  border-radius: 999px;
+  font-weight: 600;
 }
 
-.home-play-card__download:hover:not(:disabled) {
-  transform: scale(1.03);
-  background: #FFF5F9;
-  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.14);
-}
-
-.home-play-card__download:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.home-play-card__download:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.home-play-card__download-icon {
-  color: var(--accent);
-  width: 18px;
-  height: 18px;
+.home-play-card__download-btn[hidden] {
+  display: none !important;
 }
 
 .home-play-card__body {
@@ -3258,11 +3233,11 @@ body.app-shell.create-modal-open .bottom-nav {
   min-width: 2.5rem;
 }
 
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .home-play-card:not([hidden]) {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]) {
   display: flex;
 }
 
-body[data-mobile-tab="home"] .center-card--has-audio .home-play-card:not([hidden]) {
+body[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]) {
   display: flex;
 }
 
