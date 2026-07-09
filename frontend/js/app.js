@@ -11,7 +11,10 @@
     lastStory: "storytelling_last_story",
     history: "storytelling_history",
     childName: "storytelling_child_name",
+    legacyOwner: "storytelling_legacy_owner_user_id",
   };
+
+  const USER_SCOPED_STORAGE_NAMES = ["sessionId", "lastStory", "history", "childName"];
 
   const GOAL_LABELS = {
     sleep: "خوابیدن",
@@ -706,11 +709,23 @@
       return true;
     } catch (e) {
       if (token !== audioHydrationToken) return false;
-      state.audioFullUrl = null;
-      state.audioResult = null;
+      var failedStoryId = Number(state.storyId);
       revokeStoryAudioBlobUrl();
+      if (audioElement) {
+        audioElement.removeAttribute("src");
+        audioElement.load();
+      }
+      if (options.allowServerRefresh !== false && Number.isFinite(failedStoryId) && failedStoryId > 0) {
+        var refreshed = await refreshStoryAudioFromServer(failedStoryId);
+        if (refreshed && token === audioHydrationToken) {
+          return hydrateStoryAudioPlayer({
+            allowServerRefresh: false,
+            reportError: options.reportError === true,
+          });
+        }
+      }
       if (options.allowServerRefresh !== false) {
-        var synced = await syncStoryAudioFromServer();
+        var synced = await syncStoryAudioFromServer({ forceRefresh: true });
         if (synced && token === audioHydrationToken) {
           return hydrateStoryAudioPlayer({
             allowServerRefresh: false,
@@ -718,6 +733,8 @@
           });
         }
       }
+      state.audioFullUrl = null;
+      state.audioResult = null;
       if (options.reportError) {
         showError(formatApiError(e, "دریافت فایل صوتی ناموفق بود."));
       }
@@ -804,15 +821,32 @@
     return audioElement;
   }
 
-  async function syncStoryAudioFromServer() {
+  function hasUserStoryData() {
+    try {
+      if (readUserStorage("lastStory")) return true;
+      if (state.history && state.history.length) return true;
+      var rawHistory = readUserStorage("history");
+      if (rawHistory) {
+        var parsed = JSON.parse(rawHistory);
+        return Array.isArray(parsed) && parsed.length > 0;
+      }
+    } catch (e) { /* ignore corrupt data */ }
+    return false;
+  }
+
+  async function syncStoryAudioFromServer(options) {
+    options = options || {};
     if (mockFrontendMode || !window.StorytellingAPI) return false;
 
-    if (!state.storyResult || !state.storyId) {
+    var canRestoreFromServer = hasUserStoryData();
+    var storyId = Number(state.storyId);
+
+    if ((!state.storyResult || !state.storyId) && canRestoreFromServer) {
       await restoreLastStoryFromServer();
+      storyId = Number(state.storyId);
     }
 
-    var storyId = Number(state.storyId);
-    if (!Number.isFinite(storyId) || storyId <= 0) {
+    if ((!Number.isFinite(storyId) || storyId <= 0) && canRestoreFromServer) {
       await restoreLastStoryFromServer();
       storyId = Number(state.storyId);
     }
@@ -822,9 +856,13 @@
     if (!loaded) {
       state.audioFullUrl = null;
       state.audioResult = null;
-      await restoreLastStoryFromServer();
-      storyId = Number(state.storyId);
-      if (Number.isFinite(storyId) && storyId > 0) {
+      if (canRestoreFromServer) {
+        await restoreLastStoryFromServer();
+        storyId = Number(state.storyId);
+        if (Number.isFinite(storyId) && storyId > 0) {
+          loaded = await refreshStoryAudioFromServer(storyId);
+        }
+      } else if (state.storyResult && Number.isFinite(storyId) && storyId > 0) {
         loaded = await refreshStoryAudioFromServer(storyId);
       }
     }
@@ -841,7 +879,10 @@
     var element = ensureStoryAudioElement();
     if (!element) return false;
 
-    if (!element.src || !storyAudioBlobUrl) {
+    var needsHydration = !storyAudioBlobUrl
+      || !element.src
+      || (options.forceRefresh === true);
+    if (needsHydration) {
       var hydrated = await hydrateStoryAudioPlayer({ reportError: options.reportError === true });
       if (!hydrated) return false;
       element = ensureStoryAudioElement();
@@ -1094,16 +1135,91 @@
     return STORAGE_KEYS[name] + "_user_" + userId;
   }
 
-  function migrateLegacyStorage(name) {
+  function getOwnerScopedStorageKey(name, ownerUserId) {
+    return STORAGE_KEYS[name] + "_user_" + ownerUserId;
+  }
+
+  function repairCrossUserStorageLeak() {
+    var userId = getCurrentUserId();
+    if (!userId) return false;
+
+    var owner = localStorage.getItem(STORAGE_KEYS.legacyOwner);
+    if (!owner || owner === userId) return false;
+
+    var leaked = false;
+    USER_SCOPED_STORAGE_NAMES.forEach(function (name) {
+      var scopedKey = getUserStorageKey(name);
+      var scoped = localStorage.getItem(scopedKey);
+      if (!scoped) return;
+
+      var ownerScoped = localStorage.getItem(getOwnerScopedStorageKey(name, owner));
+      var legacy = localStorage.getItem(STORAGE_KEYS[name]);
+      if ((ownerScoped && scoped === ownerScoped) || (legacy && scoped === legacy)) {
+        localStorage.removeItem(scopedKey);
+        leaked = true;
+      }
+    });
+    return leaked;
+  }
+
+  function findLegacyOwnerFromScopedData(name) {
+    var legacy = localStorage.getItem(STORAGE_KEYS[name]);
+    if (!legacy) return null;
+    var prefix = STORAGE_KEYS[name] + "_user_";
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (!key || key.indexOf(prefix) !== 0) continue;
+      if (localStorage.getItem(key) === legacy) {
+        return key.slice(prefix.length);
+      }
+    }
+    return null;
+  }
+
+  function migrateLegacyStorageIfOwned(name) {
     if (!getCurrentUserId()) return;
     var scopedKey = getUserStorageKey(name);
     if (localStorage.getItem(scopedKey)) return;
+
+    var userId = getCurrentUserId();
+    var owner = localStorage.getItem(STORAGE_KEYS.legacyOwner);
+    if (!owner) {
+      owner = findLegacyOwnerFromScopedData(name);
+      if (owner) localStorage.setItem(STORAGE_KEYS.legacyOwner, owner);
+    }
+    if (owner && owner !== userId) return;
+
     var legacy = localStorage.getItem(STORAGE_KEYS[name]);
-    if (legacy) localStorage.setItem(scopedKey, legacy);
+    if (!legacy) return;
+
+    localStorage.setItem(scopedKey, legacy);
+    if (!localStorage.getItem(STORAGE_KEYS.legacyOwner)) {
+      localStorage.setItem(STORAGE_KEYS.legacyOwner, userId);
+    }
+  }
+
+  function finalizeLegacyMigration() {
+    var userId = getCurrentUserId();
+    if (!userId) return;
+    if (localStorage.getItem(STORAGE_KEYS.legacyOwner) !== userId) return;
+
+    USER_SCOPED_STORAGE_NAMES.forEach(function (name) {
+      var scopedKey = getUserStorageKey(name);
+      if (localStorage.getItem(scopedKey)) {
+        localStorage.removeItem(STORAGE_KEYS[name]);
+      }
+    });
+  }
+
+  function prepareUserScopedStorage() {
+    if (!getCurrentUserId()) return false;
+    var leaked = repairCrossUserStorageLeak();
+    USER_SCOPED_STORAGE_NAMES.forEach(migrateLegacyStorageIfOwned);
+    finalizeLegacyMigration();
+    return leaked;
   }
 
   function readUserStorage(name) {
-    migrateLegacyStorage(name);
     return localStorage.getItem(getUserStorageKey(name));
   }
 
@@ -1119,10 +1235,11 @@
   }
 
   function resolveStoryAudioUrl(url) {
-    if (!isStoryAudioUrl(url)) return null;
+    var normalized = normalizeStoryAudioUrlForStorage(url) || url;
+    if (!isStoryAudioUrl(normalized)) return null;
     return window.StorytellingAPI
-      ? window.StorytellingAPI.buildFullAudioUrl(url)
-      : url;
+      ? window.StorytellingAPI.buildFullAudioUrl(normalized)
+      : normalized;
   }
 
   function findVoiceIdByBackendVoice(backendVoice) {
@@ -1136,7 +1253,6 @@
 
   function getSessionId() {
     var scopedKey = getUserStorageKey("sessionId");
-    migrateLegacyStorage("sessionId");
     var id = localStorage.getItem(scopedKey);
     if (!id) {
       var suffix = getCurrentUserId() ? ("user" + getCurrentUserId() + "_") : "";
@@ -1223,7 +1339,7 @@
     try {
       var user = window.StorytellingAuth && window.StorytellingAuth.getUser();
       if (user && user.childName) return user.childName;
-      return localStorage.getItem(STORAGE_KEYS.childName) || "";
+      return readUserStorage("childName") || "";
     } catch (e) {
       return "";
     }
@@ -1231,10 +1347,7 @@
 
   function saveChildName(name, syncServer) {
     var trimmed = (name || "").trim();
-    try {
-      if (trimmed) localStorage.setItem(STORAGE_KEYS.childName, trimmed);
-      else localStorage.removeItem(STORAGE_KEYS.childName);
-    } catch (e) { /* ignore */ }
+    writeUserStorage("childName", trimmed || null);
 
     if (syncServer && window.StorytellingAPI && window.StorytellingAuth && window.StorytellingAuth.isLoggedIn()) {
       window.StorytellingAPI.updateChildProfile({ childName: trimmed || "" })
@@ -1596,6 +1709,7 @@
     state.audioResult = data.audioResult || null;
     state.audioVoiceId = data.voiceId || null;
     var storedAudioPath = data.audioUrl || (data.audioResult && data.audioResult.audioUrl);
+    storedAudioPath = normalizeStoryAudioUrlForStorage(storedAudioPath) || storedAudioPath;
     state.audioFullUrl = resolveStoryAudioUrl(storedAudioPath);
     if (!state.audioFullUrl && storedAudioPath && window.StorytellingAPI) {
       state.audioFullUrl = window.StorytellingAPI.buildFullAudioUrl(storedAudioPath);
@@ -1664,13 +1778,35 @@
     } catch (e) { /* ignore corrupt data */ }
   }
 
+  async function restorePersistedStoryAudio() {
+    if (!state.storyResult || !state.storyId) return false;
+
+    if (!state.audioFullUrl) {
+      var loaded = await refreshStoryAudioFromServer(state.storyId);
+      if (!loaded) return false;
+    }
+
+    saveLastStory();
+    renderStoryCard();
+    renderAudioPlayer();
+    if (state.audioFullUrl) await hydrateStoryAudioPlayer();
+    renderVoiceCards($("#voice-search") && $("#voice-search").value);
+    updateSummaries();
+    updateHomeStoryCta();
+    updateCenterCardState();
+    updatePrimaryButton();
+    updateDownloadControls();
+    updateHomePlayCard();
+    return !!(state.storyResult && state.audioFullUrl);
+  }
+
   async function restoreLastStoryFromServer() {
     if (mockFrontendMode || !window.StorytellingAPI || !getCurrentUserId()) return false;
 
     try {
       var storiesResult = await window.StorytellingAPI.getStoriesBySession(getSessionId(), 5);
       if (!storiesResult.success || !storiesResult.stories || !storiesResult.stories.length) {
-        return false;
+        return restorePersistedStoryAudio();
       }
 
       var latest = storiesResult.stories[0];
@@ -1847,7 +1983,9 @@
     state.provider = item.provider;
     state.storyResult = item.story;
     state.selectedVoiceId = item.voiceId || state.selectedVoiceId;
-    state.audioFullUrl = resolveStoryAudioUrl(item.audioUrl);
+    state.audioFullUrl = resolveStoryAudioUrl(
+      normalizeStoryAudioUrlForStorage(item.audioUrl) || item.audioUrl
+    );
     state.audioVoiceId = item.voiceId || null;
 
     if (item.formSnapshot) {
@@ -2199,7 +2337,7 @@
 
   async function togglePlayPause() {
     if (useApiPlayback()) {
-      var ready = await ensureStoryAudioReady({ reportError: true });
+      var ready = await ensureStoryAudioReady({ reportError: true, forceRefresh: true });
       if (!ready) {
         showError("فایل صوتی هنوز آماده نیست. چند لحظه صبر کن و دوباره بزن.");
         updateHomePlayCard();
@@ -2526,8 +2664,37 @@
       });
   }
 
+  function resetStoryDisplayToEmpty() {
+    stopVoicePlayback();
+    revokeStoryAudioBlobUrl();
+    state.storyId = null;
+    state.provider = null;
+    state.storyResult = null;
+    state.audioResult = null;
+    state.audioFullUrl = null;
+    state.audioVoiceId = null;
+    state.history = [];
+
+    var resultEl = $("#story-result");
+    if (resultEl) resultEl.hidden = true;
+    var preview = $("#story-preview");
+    if (preview) preview.value = "";
+    var audioWrap = $("#audio-player-wrap");
+    if (audioWrap) audioWrap.hidden = true;
+
+    updateHero(null);
+    updateCenterCardState();
+    updateHomePlayCard();
+    updateHomeStoryCta();
+    updatePrimaryButton();
+    updateDownloadControls();
+    renderHistory();
+  }
+
   async function init() {
+    var hadLeakedStorage = prepareUserScopedStorage();
     getSessionId();
+    if (hadLeakedStorage) resetStoryDisplayToEmpty();
     var savedChildName = loadSavedChildName();
     applyChildNameToForm(savedChildName);
 

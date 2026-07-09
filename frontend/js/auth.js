@@ -3,6 +3,7 @@
 
   var TOKEN_KEY = "authToken";
   var USER_KEY = "currentUser";
+  var ACTIVE_USER_KEY = "storytelling_active_user_id";
 
   function getToken() {
     return localStorage.getItem(TOKEN_KEY);
@@ -20,11 +21,15 @@
   function saveSession(token, user) {
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
+    if (user && user.id != null) {
+      localStorage.setItem(ACTIVE_USER_KEY, String(user.id));
+    }
   }
 
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(ACTIVE_USER_KEY);
   }
 
   function isLoggedIn() {
