@@ -821,15 +821,21 @@
     return audioElement;
   }
 
+  function isStoryOwnedByCurrentUser(storyId) {
+    if (storyId == null || !state.history.length) return false;
+    return state.history.some(function (item) {
+      return Number(item.storyId) === Number(storyId);
+    });
+  }
+
   function hasUserStoryData() {
     try {
-      if (readUserStorage("lastStory")) return true;
-      if (state.history && state.history.length) return true;
-      var rawHistory = readUserStorage("history");
-      if (rawHistory) {
-        var parsed = JSON.parse(rawHistory);
-        return Array.isArray(parsed) && parsed.length > 0;
+      var rawLast = readUserStorage("lastStory");
+      if (rawLast) {
+        var last = JSON.parse(rawLast);
+        if (last && last.storyId && isStoryOwnedByCurrentUser(last.storyId)) return true;
       }
+      if (state.history && state.history.length) return true;
     } catch (e) { /* ignore corrupt data */ }
     return false;
   }
@@ -1774,8 +1780,19 @@
     try {
       var raw = readUserStorage("lastStory");
       if (!raw) return;
-      applyPersistedStoryState(JSON.parse(raw));
-    } catch (e) { /* ignore corrupt data */ }
+      var data = JSON.parse(raw);
+      if (!data || !data.storyId || !data.story) {
+        writeUserStorage("lastStory", null);
+        return;
+      }
+      if (!isStoryOwnedByCurrentUser(data.storyId)) {
+        writeUserStorage("lastStory", null);
+        return;
+      }
+      applyPersistedStoryState(data);
+    } catch (e) {
+      writeUserStorage("lastStory", null);
+    }
   }
 
   async function restorePersistedStoryAudio() {
@@ -1804,12 +1821,12 @@
     if (mockFrontendMode || !window.StorytellingAPI || !getCurrentUserId()) return false;
 
     try {
-      var storiesResult = await window.StorytellingAPI.getStoriesBySession(getSessionId(), 5);
-      if (!storiesResult.success || !storiesResult.stories || !storiesResult.stories.length) {
+      var stories = await fetchUserStoriesFromServer(5);
+      if (!stories.length) {
         return restorePersistedStoryAudio();
       }
 
-      var latest = storiesResult.stories[0];
+      var latest = stories[0];
       var targetStoryId = Number(state.storyId) || Number(latest.id);
 
       if (!state.storyResult || Number(state.storyId) !== Number(latest.id)) {
@@ -1820,6 +1837,10 @@
           state.storyResult.age = latest.age;
         }
         targetStoryId = Number(latest.id);
+      }
+
+      if (!state.audioFullUrl && latest.latestAudio) {
+        applyStoryAudioFromServer(latest.latestAudio);
       }
 
       if (!state.audioFullUrl) {
@@ -1881,6 +1902,104 @@
     });
 
     return storyRestorePromise;
+  }
+
+  function storyRecordToHistoryItem(record) {
+    if (!record || !record.id || !record.story) return null;
+
+    var voiceId = null;
+    var audioUrl = null;
+    if (record.latestAudio) {
+      voiceId = findVoiceIdByBackendVoice(record.latestAudio.voice);
+      audioUrl = normalizeStoryAudioUrlForStorage(record.latestAudio.audioUrl) || record.latestAudio.audioUrl;
+    }
+
+    var voice = null;
+    if (voiceId) {
+      voice = getVoices().find(function (v) { return v.id === voiceId; });
+    }
+
+    return {
+      storyId: record.id,
+      provider: record.provider,
+      story: record.story,
+      title: record.story.title,
+      voiceId: voiceId,
+      voiceName: voice ? voice.nameFa : null,
+      durationMinutes: record.story.durationMinutes || record.durationMinutes,
+      audioUrl: audioUrl,
+      savedAt: record.createdAt || new Date().toISOString(),
+      formSnapshot: {
+        childName: record.childName || "",
+        age: record.age,
+        interest: record.interest || "",
+        goal: record.goal || "",
+        mood: record.mood || "",
+        durationMinutes: record.durationMinutes,
+        extraContext: record.extraContext || "",
+      },
+    };
+  }
+
+  async function fetchUserStoriesFromServer(limit) {
+    if (mockFrontendMode || !window.StorytellingAPI || !getCurrentUserId()) return [];
+
+    try {
+      var mine = await window.StorytellingAPI.getMyStories(limit || 30);
+      if (mine.success && mine.stories) {
+        return mine.stories;
+      }
+    } catch (e) { /* ignore */ }
+
+    return [];
+  }
+
+  async function syncHistoryFromServer() {
+    if (!getCurrentUserId()) {
+      state.history = [];
+      renderHistory();
+      return false;
+    }
+
+    var stories = [];
+    var fetchFailed = false;
+
+    if (!mockFrontendMode && window.StorytellingAPI) {
+      try {
+        var mine = await window.StorytellingAPI.getMyStories(30);
+        if (mine.success && mine.stories) {
+          stories = mine.stories;
+        }
+      } catch (e) {
+        fetchFailed = true;
+      }
+    }
+
+    if (fetchFailed) {
+      try {
+        var raw = readUserStorage("history");
+        state.history = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        state.history = [];
+      }
+      renderHistory();
+      return state.history.length > 0;
+    }
+
+    state.history = stories
+      .map(storyRecordToHistoryItem)
+      .filter(Boolean)
+      .slice(0, 30);
+
+    writeUserStorage("history", JSON.stringify(state.history));
+
+    if (!state.history.length) {
+      writeUserStorage("lastStory", null);
+      if (state.storyResult) resetStoryDisplayToEmpty();
+    }
+
+    renderHistory();
+    return state.history.length > 0;
   }
 
   function addToHistory(item) {
@@ -2656,7 +2775,11 @@
           if (result.user.childName) applyChildNameToForm(result.user.childName);
           syncChildDisplay();
           syncProfileAvatarPicker();
-          restoreUserStoryState();
+          syncHistoryFromServer().then(function () {
+            loadLastStory();
+            if (!state.storyResult) updateHero(null);
+            restoreUserStoryState();
+          });
         }
       })
       .catch(function () {
@@ -2713,7 +2836,7 @@
     renderGoalChips();
     renderVoiceCards();
     renderSliders();
-    loadHistory();
+    await syncHistoryFromServer();
     loadLastStory();
     await restoreUserStoryState();
     if (!state.storyResult) updateHero(null);

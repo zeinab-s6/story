@@ -151,6 +151,11 @@
     });
   }
 
+  async function getMyStories(limit) {
+    var query = limit ? "?limit=" + encodeURIComponent(limit) : "";
+    return request(apiUrl("/api/stories/mine" + query), { method: "GET" });
+  }
+
   window.StorytellingAPI = {
     getBaseUrl,
     apiUrl,
@@ -166,5 +171,6 @@
     previewVoice,
     getStoryAudioList,
     getStoriesBySession,
+    getMyStories,
   };
 })();

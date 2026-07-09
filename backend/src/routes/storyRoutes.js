@@ -8,6 +8,7 @@ import {
   getStoryById,
   deleteStoryById,
   getStoriesBySessionId,
+  getStoriesByUserIdWithLatestAudio,
 } from '../repositories/storyRepository.js';
 import { saveFeedback } from '../repositories/feedbackRepository.js';
 import {
@@ -22,6 +23,7 @@ import { isValidBuiltinVoice } from '../catalog/ttsVoices.js';
 import { isValidElevenLabsVoice } from '../catalog/elevenLabsVoices.js';
 import { isValidIviraSpeaker } from '../catalog/iviraVoices.js';
 import env from '../config/env.js';
+import { userAuth, optionalUserAuth } from '../middleware/userAuth.js';
 
 function isValidRequestedVoice(voice) {
   if (voice === undefined || voice === null) {
@@ -36,6 +38,20 @@ function isValidRequestedVoice(voice) {
   return isValidBuiltinVoice(voice);
 }
 
+function canAccessStory(storyRecord, user) {
+  if (!storyRecord) return false;
+  if (!user) return true;
+  if (storyRecord.userId == null) return true;
+  return Number(storyRecord.userId) === Number(user.id);
+}
+
+function denyStoryAccess(res) {
+  return res.status(403).json({
+    success: false,
+    error: 'به این قصه دسترسی ندارید.',
+  });
+}
+
 const router = Router();
 
 router.get('/goals', (_req, res) => {
@@ -48,7 +64,7 @@ router.get('/goals', (_req, res) => {
   res.json({ success: true, goals });
 });
 
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', optionalUserAuth, async (req, res, next) => {
   const validation = validateStoryInput(req.body);
 
   if (!validation.valid) {
@@ -60,7 +76,10 @@ router.post('/generate', async (req, res, next) => {
   }
 
   try {
-    const result = await createStory(validation.data);
+    const result = await createStory({
+      ...validation.data,
+      userId: req.user?.id ?? null,
+    });
 
     if (!result.success) {
       return res.status(422).json(result);
@@ -70,6 +89,13 @@ router.post('/generate', async (req, res, next) => {
   } catch (err) {
     return next(err);
   }
+});
+
+router.get('/mine', userAuth, (req, res) => {
+  const limit = Math.min(Number(req.query.limit) || 30, 50);
+  const stories = getStoriesByUserIdWithLatestAudio(req.user.id, limit);
+
+  return res.json({ success: true, stories });
 });
 
 router.get('/session/:sessionId', (req, res) => {
@@ -88,7 +114,7 @@ router.get('/session/:sessionId', (req, res) => {
   return res.json({ success: true, stories });
 });
 
-router.post('/:id/audio', async (req, res, next) => {
+router.post('/:id/audio', optionalUserAuth, async (req, res, next) => {
   const storyId = Number(req.params.id);
 
   if (!Number.isInteger(storyId) || storyId <= 0) {
@@ -104,6 +130,10 @@ router.post('/:id/audio', async (req, res, next) => {
       success: false,
       error: 'قصه‌ای با این شناسه پیدا نشد.',
     });
+  }
+
+  if (!canAccessStory(storyRecord, req.user)) {
+    return denyStoryAccess(res);
   }
 
   const { voiceProfileId, voice, format, narrationText, backgroundAmbience } = req.body ?? {};
@@ -168,7 +198,7 @@ router.post('/:id/audio', async (req, res, next) => {
   }
 });
 
-router.get('/:id/audio', (req, res) => {
+router.get('/:id/audio', optionalUserAuth, (req, res) => {
   const storyId = Number(req.params.id);
 
   if (!Number.isInteger(storyId) || storyId <= 0) {
@@ -186,6 +216,10 @@ router.get('/:id/audio', (req, res) => {
     });
   }
 
+  if (!canAccessStory(storyRecord, req.user)) {
+    return denyStoryAccess(res);
+  }
+
   const audioList = getStoryAudioByStoryId(storyId).map((audio) =>
     toPublicStoryAudio(audio, storyId),
   );
@@ -196,7 +230,7 @@ router.get('/:id/audio', (req, res) => {
   });
 });
 
-router.get('/:storyId/audio/:audioId', (req, res) => {
+router.get('/:storyId/audio/:audioId', optionalUserAuth, (req, res) => {
   const storyId = Number(req.params.storyId);
   const audioId = Number(req.params.audioId);
 
@@ -205,6 +239,18 @@ router.get('/:storyId/audio/:audioId', (req, res) => {
       success: false,
       error: 'شناسه قصه یا صدا معتبر نیست.',
     });
+  }
+
+  const storyRecord = getStoryById(storyId);
+  if (!storyRecord) {
+    return res.status(404).json({
+      success: false,
+      error: 'قصه‌ای با این شناسه پیدا نشد.',
+    });
+  }
+
+  if (!canAccessStory(storyRecord, req.user)) {
+    return denyStoryAccess(res);
   }
 
   const audio = getStoryAudioByStoryAndId(storyId, audioId);

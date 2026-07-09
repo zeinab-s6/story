@@ -2,11 +2,11 @@ import db from '../db/database.js';
 
 const insertStoryStmt = db.prepare(`
   INSERT INTO stories (
-    session_id, child_name, age, interest, goal, mood, duration_minutes,
+    session_id, user_id, child_name, age, interest, goal, mood, duration_minutes,
     extra_context, provider, model, prompt_version, story_json,
     safety_status, safety_reason, created_at
   ) VALUES (
-    @sessionId, @childName, @age, @interest, @goal, @mood, @durationMinutes,
+    @sessionId, @userId, @childName, @age, @interest, @goal, @mood, @durationMinutes,
     @extraContext, @provider, @model, @promptVersion, @storyJson,
     @safetyStatus, @safetyReason, @createdAt
   )
@@ -17,6 +17,23 @@ const deleteStoryStmt = db.prepare('DELETE FROM stories WHERE id = ?');
 const getStoriesBySessionStmt = db.prepare(`
   SELECT * FROM stories WHERE session_id = ? ORDER BY created_at DESC LIMIT ?
 `);
+const getStoriesByUserStmt = db.prepare(`
+  SELECT * FROM stories WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+`);
+const getStoriesByUserWithAudioStmt = db.prepare(`
+  SELECT
+    s.*,
+    sa.id AS audio_id,
+    sa.voice AS audio_voice,
+    sa.format AS audio_format
+  FROM stories s
+  LEFT JOIN story_audio sa ON sa.id = (
+    SELECT id FROM story_audio WHERE story_id = s.id ORDER BY created_at DESC LIMIT 1
+  )
+  WHERE s.user_id = ?
+  ORDER BY s.created_at DESC
+  LIMIT ?
+`);
 
 function mapStoryRow(row) {
   if (!row) return null;
@@ -24,6 +41,7 @@ function mapStoryRow(row) {
   return {
     id: row.id,
     sessionId: row.session_id,
+    userId: row.user_id,
     childName: row.child_name,
     age: row.age,
     interest: row.interest,
@@ -52,6 +70,7 @@ export function saveStoryRequestAndResult(
 ) {
   const result = insertStoryStmt.run({
     sessionId: input.sessionId ?? null,
+    userId: input.userId ?? null,
     childName: input.childName ?? null,
     age: input.age,
     interest: input.interest,
@@ -89,6 +108,35 @@ export function deleteStoryById(id) {
 export function getStoriesBySessionId(sessionId, limit = 20) {
   const rows = getStoriesBySessionStmt.all(sessionId, limit);
   return rows.map(mapStoryRow);
+}
+
+export function getStoriesByUserId(userId, limit = 20) {
+  const rows = getStoriesByUserStmt.all(userId, limit);
+  return rows.map(mapStoryRow);
+}
+
+function mapStoryRowWithAudio(row) {
+  const story = mapStoryRow(row);
+  if (!story) return null;
+
+  if (!row.audio_id) {
+    return { ...story, latestAudio: null };
+  }
+
+  return {
+    ...story,
+    latestAudio: {
+      id: row.audio_id,
+      voice: row.audio_voice,
+      format: row.audio_format,
+      audioUrl: `/api/stories/${story.id}/audio/${row.audio_id}`,
+    },
+  };
+}
+
+export function getStoriesByUserIdWithLatestAudio(userId, limit = 20) {
+  const rows = getStoriesByUserWithAudioStmt.all(userId, limit);
+  return rows.map(mapStoryRowWithAudio).filter(Boolean);
 }
 
 export function getStoryStats() {
