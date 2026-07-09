@@ -1946,8 +1946,6 @@ body.app-shell .toast-container {
 body.app-shell .bottom-nav {
   display: flex;
   bottom: 0;
-  z-index: 320;
-  pointer-events: auto;
   height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -8px 32px rgba(219, 39, 119, 0.12);
@@ -1965,7 +1963,6 @@ body.app-shell .bottom-nav__item {
 body.app-shell .drawer {
   width: var(--app-frame-w);
   max-width: var(--app-frame-w);
-  z-index: 280;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   top: auto;
   bottom: 0;
@@ -2904,7 +2901,7 @@ body.app-shell.story-creating .story-create-loading:not([hidden]) {
 .create-modal {
   position: fixed;
   inset: 0;
-  z-index: 240;
+  z-index: 250;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3047,12 +3044,8 @@ body.create-modal-open {
   overflow: hidden;
 }
 
-body.app-shell .overlay--visible {
-  z-index: 300;
-}
-
-body.app-shell .bottom-nav__item {
-  pointer-events: auto;
+body.app-shell.create-modal-open .bottom-nav {
+  pointer-events: none;
 }
 
 /* ---- Home Play Card ---- */
