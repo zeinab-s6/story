@@ -3024,7 +3024,7 @@ body.app-shell.create-modal-open .bottom-nav {
 .home-play-card__main {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -3035,14 +3035,14 @@ body.app-shell.create-modal-open .bottom-nav {
 .home-play-card__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .home-play-card__play {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, var(--accent), #EC4899);
@@ -3050,13 +3050,13 @@ body.app-shell.create-modal-open .bottom-nav {
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(219, 39, 119, 0.3);
+  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.22);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .home-play-card__play:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(219, 39, 119, 0.36);
+  transform: scale(1.03);
+  box-shadow: 0 5px 16px rgba(219, 39, 119, 0.28);
 }
 
 .home-play-card__play:active:not(:disabled) {
@@ -3069,27 +3069,29 @@ body.app-shell.create-modal-open .bottom-nav {
 
 .home-play-card__play-icon {
   color: #fff;
+  width: 18px;
+  height: 18px;
 }
 
 .home-play-card__download {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  border: 1.5px solid rgba(219, 39, 119, 0.28);
+  border: 1px solid rgba(219, 39, 119, 0.22);
   background: #fff;
   color: var(--accent);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(219, 39, 119, 0.12);
+  box-shadow: 0 3px 12px rgba(219, 39, 119, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .home-play-card__download:hover:not(:disabled) {
-  transform: scale(1.05);
+  transform: scale(1.03);
   background: #FFF5F9;
-  box-shadow: 0 8px 24px rgba(219, 39, 119, 0.18);
+  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.14);
 }
 
 .home-play-card__download:active:not(:disabled) {
@@ -3103,6 +3105,8 @@ body.app-shell.create-modal-open .bottom-nav {
 
 .home-play-card__download-icon {
   color: var(--accent);
+  width: 18px;
+  height: 18px;
 }
 
 .home-play-card__body {

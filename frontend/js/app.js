@@ -96,6 +96,7 @@
     audioVoiceId: null,
     isGeneratingStory: false,
     isGeneratingAudio: false,
+    isDownloading: false,
     isPlaying: false,
     playbackVoiceId: null,
     loadingVoiceId: null,
@@ -777,21 +778,81 @@
 
   function updateDownloadControls() {
     var hasAudio = !!state.audioFullUrl;
-    var disabled = !hasAudio || state.isGeneratingAudio;
+    var disabled = !hasAudio || state.isGeneratingAudio || state.isDownloading;
     var footerBtn = $("#btn-download");
     var homeBtn = $("#btn-home-download");
+    var inlineBtn = $("#btn-download-inline");
     var regenBtn = $("#btn-regenerate-audio");
     if (footerBtn) {
       footerBtn.hidden = !hasAudio;
       footerBtn.disabled = disabled;
+      footerBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود MP3";
     }
     if (homeBtn) {
       homeBtn.disabled = disabled;
+      homeBtn.setAttribute("aria-busy", state.isDownloading ? "true" : "false");
+      homeBtn.setAttribute(
+        "aria-label",
+        state.isDownloading ? "در حال آماده‌سازی دانلود" : "دانلود فایل صوتی برای استفاده آفلاین"
+      );
+    }
+    if (inlineBtn) {
+      inlineBtn.disabled = disabled;
+      inlineBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
     }
     if (regenBtn) {
       regenBtn.hidden = !state.storyResult;
       regenBtn.disabled = state.isGeneratingAudio;
     }
+  }
+
+  function scheduleRevokeObjectUrl(url) {
+    setTimeout(function () {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        /* ignore */
+      }
+    }, 60000);
+  }
+
+  async function getStoryAudioBlobForDownload() {
+    if (storyAudioBlobUrl) {
+      var cached = await fetch(storyAudioBlobUrl);
+      return cached.blob();
+    }
+    var url = getPlaybackUrl();
+    if (!url) return null;
+    var fetchUrl = url.indexOf("?") === -1 ? url + "?download=1" : url + "&download=1";
+    return fetchStoryAudioBlob(fetchUrl);
+  }
+
+  async function triggerFileDownload(blob, filename) {
+    var ext = filename.split(".").pop() || "mp3";
+    var mime = blob.type || (ext === "wav" ? "audio/wav" : "audio/mpeg");
+    var fileBlob = blob.type ? blob : new Blob([blob], { type: mime });
+
+    if (typeof File !== "undefined" && navigator.share) {
+      try {
+        var shareFile = new File([fileBlob], filename, { type: mime });
+        if (!navigator.canShare || navigator.canShare({ files: [shareFile] })) {
+          await navigator.share({ files: [shareFile], title: filename });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === "AbortError") return;
+      }
+    }
+
+    var blobUrl = URL.createObjectURL(fileBlob);
+    var a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    scheduleRevokeObjectUrl(blobUrl);
   }
 
   function getVoiceById(voiceId) {
@@ -1992,35 +2053,30 @@
   }
 
   async function handleDownload() {
-    var url = getPlaybackUrl();
-    if (!url) {
-      showToast("هنوز فایل صوتی آماده نیست. ابتدا «خواندن قصه با صدا» را بزن.", "info");
+    if (state.isDownloading) return;
+
+    if (!getPlaybackUrl()) {
+      showToast("هنوز فایل صوتی آماده نیست. ابتدا قصه را بساز.", "info");
       return;
     }
 
     var filename = getAudioDownloadFilename();
-    var downloadUrl = url;
-    var blobUrl = null;
+    state.isDownloading = true;
+    updateDownloadControls();
 
     try {
-      if (useApiPlayback()) {
-        var fetchUrl = url.indexOf("?") === -1 ? url + "?download=1" : url + "&download=1";
-        var blob = await fetchStoryAudioBlob(fetchUrl);
-        blobUrl = URL.createObjectURL(blob);
-        downloadUrl = blobUrl;
+      var blob = await getStoryAudioBlobForDownload();
+      if (!blob) {
+        showToast("هنوز فایل صوتی آماده نیست.", "info");
+        return;
       }
-
-      var a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await triggerFileDownload(blob, filename);
       showToast("دانلود «" + filename + "» شروع شد.", "success");
     } catch (e) {
       showToast(formatApiError(e, "دانلود فایل صوتی ناموفق بود."), "error");
     } finally {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      state.isDownloading = false;
+      updateDownloadControls();
     }
   }
 
