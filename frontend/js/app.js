@@ -350,6 +350,7 @@
       metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
     }
     if (playBtn) {
+      playBtn.disabled = state.isGeneratingAudio;
       playBtn.classList.toggle("home-play-card__play--playing", state.isPlaying);
       playBtn.setAttribute("aria-label", state.isPlaying ? "توقف قصه" : "پخش قصه");
     }
@@ -558,9 +559,10 @@
   }
 
   function playGeneratedStoryAudio() {
+    ensureStoryAudioUrl();
     if (!state.audioFullUrl) return Promise.resolve(false);
     if (useApiPlayback()) {
-      return hydrateStoryAudioPlayer({ reportError: true }).then(function (ready) {
+      return ensureStoryAudioReady({ reportError: true }).then(function (ready) {
         if (!ready || !audioElement) return false;
         return audioElement.play()
           .then(function () {
@@ -785,6 +787,21 @@
 
   function hasStoryAudioAvailable() {
     return !!(state.storyResult && ensureStoryAudioUrl());
+  }
+
+  async function ensureStoryAudioReady(options) {
+    options = options || {};
+    ensureStoryAudioUrl();
+    if (!state.audioFullUrl && state.storyId) {
+      await refreshStoryAudioFromServer(state.storyId);
+    }
+    ensureStoryAudioUrl();
+    if (!state.audioFullUrl) return false;
+    if (!audioElement || !audioElement.src || !storyAudioBlobUrl) {
+      var hydrated = await hydrateStoryAudioPlayer({ reportError: options.reportError === true });
+      if (!hydrated) return false;
+    }
+    return !!(audioElement && audioElement.src);
   }
 
   function formatApiError(err, fallback) {
@@ -1659,15 +1676,11 @@
       clearError();
       ensureStoryAudioUrl();
 
-      if (state.storyId && !state.audioFullUrl) {
-        await refreshStoryAudioFromServer(state.storyId);
-      }
-
-      if (!state.storyResult || !state.audioFullUrl) {
+      if (!state.storyResult || !state.storyId) {
         await restoreLastStoryFromServer();
       }
 
-      if (state.storyId && state.storyResult && !state.audioFullUrl) {
+      if (state.storyId) {
         await refreshStoryAudioFromServer(state.storyId);
       }
 
@@ -2140,24 +2153,12 @@
     }
   }
 
-  function togglePlayPause() {
+  async function togglePlayPause() {
     if (useApiPlayback()) {
-      if (!ensureStoryAudioUrl()) {
-        if (!state.storyId) return;
-        refreshStoryAudioFromServer(state.storyId).then(function (refreshed) {
-          if (refreshed) togglePlayPause();
-          else showError("فایل صوتی هنوز آماده نیست. روی آیکن رفرش بالای صفحه بزن.");
-          updateHomePlayCard();
-        });
-        return;
-      }
-      if (!audioElement || !audioElement.src) {
-        hydrateStoryAudioPlayer({ reportError: true }).then(function (ready) {
-          if (ready && audioElement) {
-            audioElement.play().catch(function () {});
-          }
-          updateHomePlayCard();
-        });
+      var ready = await ensureStoryAudioReady({ reportError: true });
+      if (!ready) {
+        showError("فایل صوتی هنوز آماده نیست. چند لحظه صبر کن و دوباره بزن.");
+        updateHomePlayCard();
         return;
       }
       if (state.isPlaying) {
@@ -2198,12 +2199,9 @@
   async function handleDownload() {
     if (state.isDownloading) return;
 
-    if (!getPlaybackUrl() && state.storyId) {
-      await refreshStoryAudioFromServer(state.storyId);
-    }
-
-    if (!getPlaybackUrl()) {
-      showToast("هنوز فایل صوتی آماده نیست. ابتدا قصه را بساز.", "info");
+    var ready = await ensureStoryAudioReady();
+    if (!ready) {
+      showToast("هنوز فایل صوتی آماده نیست.", "info");
       return;
     }
 
@@ -2248,22 +2246,6 @@
       updateDownloadControls();
       updateHomePlayCard();
       updateCenterCardState();
-    }
-  }
-
-  async function handleHeaderRefresh() {
-    var btn = $("#btn-header-refresh");
-    if (btn) btn.disabled = true;
-    try {
-      ensureStoryAudioUrl();
-      if (state.storyId) {
-        await refreshStoryAudioFromServer(state.storyId);
-      }
-      await restoreUserStoryState();
-      renderStoryCard();
-      updateHomePlayCard();
-    } finally {
-      if (btn) btn.disabled = false;
     }
   }
 
@@ -2463,7 +2445,6 @@
     $("#btn-home-download") && $("#btn-home-download").addEventListener("click", handleDownload);
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
-    $("#btn-header-refresh") && $("#btn-header-refresh").addEventListener("click", handleHeaderRefresh);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
@@ -2497,7 +2478,7 @@
       });
   }
 
-  function init() {
+  async function init() {
     getSessionId();
     var savedChildName = loadSavedChildName();
     applyChildNameToForm(savedChildName);
@@ -2519,7 +2500,7 @@
     renderSliders();
     loadHistory();
     loadLastStory();
-    restoreUserStoryState();
+    await restoreUserStoryState();
     if (!state.storyResult) updateHero(null);
     updateSummaries();
     updateCharCount();
