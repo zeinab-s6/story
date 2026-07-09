@@ -1400,11 +1400,23 @@
     showToast("قصه بازیابی شد.", "success");
   }
 
+  function clearActiveStory() {
+    stopVoicePlayback();
+    state.storyId = null;
+    state.provider = null;
+    state.storyResult = null;
+    state.audioResult = null;
+    state.audioFullUrl = null;
+    state.audioVoiceId = null;
+    localStorage.removeItem(STORAGE_KEYS.lastStory);
+  }
+
   function clearHistory() {
     state.history = [];
     localStorage.removeItem(STORAGE_KEYS.history);
-    renderHistory();
-    showToast("لیست قصه‌ها پاک شد.", "info");
+    clearActiveStory();
+    closeHistoryDrawer();
+    window.location.reload();
   }
 
   function openHistoryDrawer() {

@@ -67,7 +67,14 @@ router.post('/login', (req, res) => {
   const { email, password } = validation.data;
   const user = getUserByEmail(email);
 
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      error: 'حساب کاربری خود را ایجاد کنید.',
+    });
+  }
+
+  if (!verifyPassword(password, user.passwordHash)) {
     return res.status(401).json({
       success: false,
       error: 'ایمیل یا رمز عبور اشتباه است.',

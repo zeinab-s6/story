@@ -73,6 +73,11 @@
         } else if (err.message) {
           msg = err.message;
         }
+        if (msg === "حساب کاربری خود را ایجاد کنید.") {
+          switchTab("register");
+          var registerEmail = document.getElementById("register-email");
+          if (registerEmail && email) registerEmail.value = email;
+        }
         showError(msg);
       } finally {
         setLoading(btn, false);
