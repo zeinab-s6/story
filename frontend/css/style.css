@@ -1946,7 +1946,8 @@ body.app-shell .toast-container {
 body.app-shell .bottom-nav {
   display: flex;
   bottom: 0;
-  z-index: 260;
+  z-index: 320;
+  pointer-events: auto;
   height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -8px 32px rgba(219, 39, 119, 0.12);
@@ -3047,7 +3048,11 @@ body.create-modal-open {
 }
 
 body.app-shell .overlay--visible {
-  z-index: 270;
+  z-index: 300;
+}
+
+body.app-shell .bottom-nav__item {
+  pointer-events: auto;
 }
 
 /* ---- Home Play Card ---- */

@@ -165,7 +165,26 @@
     state.isDownloading = false;
     setStoryCreateLoading(false);
     stopCreateProgress();
-    document.body.classList.remove("create-modal-open");
+    dismissBlockingOverlays();
+  }
+
+  function dismissBlockingOverlays() {
+    var modal = $("#create-modal");
+    if (modal) {
+      modal.hidden = true;
+      modal.setAttribute("aria-hidden", "true");
+    }
+    document.body.classList.remove("create-modal-open", "drawer-open");
+    var overlay = $("#drawer-overlay");
+    if (overlay) {
+      overlay.classList.remove("overlay--visible");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+    var drawer = $("#history-drawer");
+    if (drawer) {
+      drawer.classList.remove("drawer--open");
+      drawer.setAttribute("aria-hidden", "true");
+    }
   }
 
   function updateStoryCreateButtonVisibility() {
@@ -667,10 +686,19 @@
     return headers;
   }
 
-  async function fetchStoryAudioBlob(url) {
+  async function fetchStoryAudioBlob(url, options) {
+    options = options || {};
+    var timeoutMs = Number(options.timeoutMs) || 20000;
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timeoutId = controller
+      ? setTimeout(function () { controller.abort(); }, timeoutMs)
+      : null;
     var response;
     try {
-      response = await fetch(url, { headers: getAuthFetchHeaders() });
+      response = await fetch(url, {
+        headers: getAuthFetchHeaders(),
+        signal: controller ? controller.signal : undefined,
+      });
     } catch (err) {
       if (window.StorytellingAPI && window.StorytellingAPI.logFetchFailure) {
         window.StorytellingAPI.logFetchFailure("story audio network error", {
@@ -681,6 +709,8 @@
         });
       }
       throw err;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
     if (!response.ok) {
       var errBody = null;
@@ -3071,8 +3101,20 @@
     renderGoalChips();
     renderVoiceCards();
     renderSliders();
-    await syncHistoryFromServer();
-    await restoreUserStoryState();
+    bindEvents();
+    bindStoryAudioPlaybackEvents();
+    if (isMobileLayout()) {
+      document.body.setAttribute("data-mobile-tab", mobileTab);
+    }
+    setupStoryCreateScrollReveal();
+
+    try {
+      await syncHistoryFromServer();
+      await restoreUserStoryState();
+    } catch (e) {
+      /* keep navigation usable even if restore fails */
+    }
+
     if (!state.storyResult) updateHero(null);
     updateSummaries();
     updateCharCount();
@@ -3080,13 +3122,8 @@
     updateDownloadControls();
     updateHomeStoryCta();
     if (window.StorytellingIcons) window.StorytellingIcons.injectAll(document);
-    bindEvents();
-    bindStoryAudioPlaybackEvents();
     syncVoiceTaglines();
     fetchVoiceMode();
-    if (isMobileLayout()) {
-      document.body.setAttribute("data-mobile-tab", mobileTab);
-    }
     setupStoryCreateScrollReveal();
   }
 
