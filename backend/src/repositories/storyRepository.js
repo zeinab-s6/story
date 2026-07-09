@@ -20,6 +20,12 @@ const getStoriesBySessionStmt = db.prepare(`
 const getStoriesByUserStmt = db.prepare(`
   SELECT * FROM stories WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
 `);
+const claimStoriesForUserStmt = db.prepare(`
+  UPDATE stories
+  SET user_id = ?
+  WHERE user_id IS NULL AND session_id = ? AND session_id IS NOT NULL
+`);
+
 const getStoriesByUserWithAudioStmt = db.prepare(`
   SELECT
     s.*,
@@ -134,7 +140,16 @@ function mapStoryRowWithAudio(row) {
   };
 }
 
-export function getStoriesByUserIdWithLatestAudio(userId, limit = 20) {
+export function claimUnassignedStoriesForUser(userId, sessionId) {
+  if (!userId || !sessionId) return 0;
+  const result = claimStoriesForUserStmt.run(userId, sessionId);
+  return result.changes;
+}
+
+export function getStoriesByUserIdWithLatestAudio(userId, sessionId = null, limit = 20) {
+  if (sessionId) {
+    claimUnassignedStoriesForUser(userId, sessionId);
+  }
   const rows = getStoriesByUserWithAudioStmt.all(userId, limit);
   return rows.map(mapStoryRowWithAudio).filter(Boolean);
 }

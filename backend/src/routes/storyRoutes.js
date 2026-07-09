@@ -93,7 +93,8 @@ router.post('/generate', optionalUserAuth, async (req, res, next) => {
 
 router.get('/mine', userAuth, (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 30, 50);
-  const stories = getStoriesByUserIdWithLatestAudio(req.user.id, limit);
+  const sessionId = req.query.sessionId?.trim() || null;
+  const stories = getStoriesByUserIdWithLatestAudio(req.user.id, sessionId, limit);
 
   return res.json({ success: true, stories });
 });

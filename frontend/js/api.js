@@ -151,9 +151,12 @@
     });
   }
 
-  async function getMyStories(limit) {
-    var query = limit ? "?limit=" + encodeURIComponent(limit) : "";
-    return request(apiUrl("/api/stories/mine" + query), { method: "GET" });
+  async function getMyStories(limit, sessionId) {
+    var query = [];
+    if (limit) query.push("limit=" + encodeURIComponent(limit));
+    if (sessionId) query.push("sessionId=" + encodeURIComponent(sessionId));
+    var qs = query.length ? "?" + query.join("&") : "";
+    return request(apiUrl("/api/stories/mine" + qs), { method: "GET" });
   }
 
   window.StorytellingAPI = {

@@ -1860,7 +1860,7 @@
         }
       }
 
-      if (!state.storyResult || !state.audioFullUrl) return false;
+      if (!state.storyResult) return false;
 
       saveLastStory();
       renderStoryCard();
@@ -1879,11 +1879,38 @@
     }
   }
 
+  async function restoreHomeStoryForAccount() {
+    if (state.storyResult && state.storyId) {
+      return true;
+    }
+
+    loadLastStory();
+    if (state.storyResult && state.storyId) {
+      if (!state.audioFullUrl) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
+      return true;
+    }
+
+    if (state.history.length) {
+      restoreHistoryItem(state.history[0], { silent: true });
+      if (state.storyId && !state.audioFullUrl) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
+      return !!state.storyResult;
+    }
+
+    return restoreLastStoryFromServer();
+  }
+
   async function restoreUserStoryState() {
     if (storyRestorePromise) return storyRestorePromise;
 
     storyRestorePromise = (async function () {
       clearError();
+      if (!state.storyResult) {
+        await restoreHomeStoryForAccount();
+      }
       await syncStoryAudioFromServer();
 
       if (state.audioFullUrl) {
@@ -1945,7 +1972,7 @@
     if (mockFrontendMode || !window.StorytellingAPI || !getCurrentUserId()) return [];
 
     try {
-      var mine = await window.StorytellingAPI.getMyStories(limit || 30);
+      var mine = await window.StorytellingAPI.getMyStories(limit || 30, getSessionId());
       if (mine.success && mine.stories) {
         return mine.stories;
       }
@@ -1966,7 +1993,7 @@
 
     if (!mockFrontendMode && window.StorytellingAPI) {
       try {
-        var mine = await window.StorytellingAPI.getMyStories(30);
+        var mine = await window.StorytellingAPI.getMyStories(30, getSessionId());
         if (mine.success && mine.stories) {
           stories = mine.stories;
         }
@@ -2097,7 +2124,8 @@
     renderStoriesPanel();
   }
 
-  function restoreHistoryItem(item) {
+  function restoreHistoryItem(item, options) {
+    options = options || {};
     state.storyId = item.storyId;
     state.provider = item.provider;
     state.storyResult = item.story;
@@ -2145,7 +2173,9 @@
     syncChildDisplay();
     updateHomeStoryCta();
     updateDownloadControls();
-    showToast("قصه بازیابی شد.", "success");
+    if (!options.silent) {
+      showToast("قصه بازیابی شد.", "success");
+    }
   }
 
   function clearActiveStory() {
@@ -2776,9 +2806,10 @@
           syncChildDisplay();
           syncProfileAvatarPicker();
           syncHistoryFromServer().then(function () {
-            loadLastStory();
-            if (!state.storyResult) updateHero(null);
-            restoreUserStoryState();
+            restoreHomeStoryForAccount().then(function () {
+              if (!state.storyResult) updateHero(null);
+              restoreUserStoryState();
+            });
           });
         }
       })
@@ -2837,7 +2868,7 @@
     renderVoiceCards();
     renderSliders();
     await syncHistoryFromServer();
-    loadLastStory();
+    await restoreHomeStoryForAccount();
     await restoreUserStoryState();
     if (!state.storyResult) updateHero(null);
     updateSummaries();
