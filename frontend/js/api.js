@@ -140,6 +140,17 @@
     });
   }
 
+  async function getStoryAudioList(storyId) {
+    return request(apiUrl("/api/stories/" + storyId + "/audio"), { method: "GET" });
+  }
+
+  async function getStoriesBySession(sessionId, limit) {
+    var query = limit ? "?limit=" + encodeURIComponent(limit) : "";
+    return request(apiUrl("/api/stories/session/" + encodeURIComponent(sessionId) + query), {
+      method: "GET",
+    });
+  }
+
   window.StorytellingAPI = {
     getBaseUrl,
     apiUrl,
@@ -153,5 +164,7 @@
     generateStoryAudio,
     getVoiceMode,
     previewVoice,
+    getStoryAudioList,
+    getStoriesBySession,
   };
 })();

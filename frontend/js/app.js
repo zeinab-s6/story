@@ -928,11 +928,65 @@
       });
   }
 
+  function getCurrentUserId() {
+    var user = window.StorytellingAuth && window.StorytellingAuth.getUser();
+    return user && user.id != null ? String(user.id) : null;
+  }
+
+  function getUserStorageKey(name) {
+    var userId = getCurrentUserId();
+    if (!userId) return STORAGE_KEYS[name];
+    return STORAGE_KEYS[name] + "_user_" + userId;
+  }
+
+  function migrateLegacyStorage(name) {
+    if (!getCurrentUserId()) return;
+    var scopedKey = getUserStorageKey(name);
+    if (localStorage.getItem(scopedKey)) return;
+    var legacy = localStorage.getItem(STORAGE_KEYS[name]);
+    if (legacy) localStorage.setItem(scopedKey, legacy);
+  }
+
+  function readUserStorage(name) {
+    migrateLegacyStorage(name);
+    return localStorage.getItem(getUserStorageKey(name));
+  }
+
+  function writeUserStorage(name, value) {
+    if (value == null) localStorage.removeItem(getUserStorageKey(name));
+    else localStorage.setItem(getUserStorageKey(name), value);
+  }
+
+  function normalizeStoryAudioUrlForStorage(url) {
+    if (!url || !isStoryAudioUrl(url)) return null;
+    var idx = url.indexOf("/api/stories/");
+    return idx !== -1 ? url.slice(idx) : url;
+  }
+
+  function resolveStoryAudioUrl(url) {
+    if (!isStoryAudioUrl(url)) return null;
+    return window.StorytellingAPI
+      ? window.StorytellingAPI.buildFullAudioUrl(url)
+      : url;
+  }
+
+  function findVoiceIdByBackendVoice(backendVoice) {
+    if (!backendVoice) return null;
+    var allVoices = OPENAI_VOICES.concat(VOICES);
+    var found = allVoices.find(function (voice) {
+      return voice.backendVoice === backendVoice || voice.id === backendVoice;
+    });
+    return found ? found.id : null;
+  }
+
   function getSessionId() {
-    let id = localStorage.getItem(STORAGE_KEYS.sessionId);
+    var scopedKey = getUserStorageKey("sessionId");
+    migrateLegacyStorage("sessionId");
+    var id = localStorage.getItem(scopedKey);
     if (!id) {
-      id = "session_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
-      localStorage.setItem(STORAGE_KEYS.sessionId, id);
+      var suffix = getCurrentUserId() ? ("user" + getCurrentUserId() + "_") : "";
+      id = "session_" + suffix + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(scopedKey, id);
     }
     return id;
   }
@@ -1365,44 +1419,124 @@
       story: state.storyResult,
       voiceId: voice.id,
       voiceName: voice.nameFa,
-      audioUrl: isStoryAudioUrl(state.audioFullUrl) ? state.audioFullUrl : null,
+      audioUrl: normalizeStoryAudioUrlForStorage(state.audioFullUrl),
+      audioResult: state.audioResult || null,
       savedAt: new Date().toISOString(),
     };
-    localStorage.setItem(STORAGE_KEYS.lastStory, JSON.stringify(payload));
+    writeUserStorage("lastStory", JSON.stringify(payload));
+  }
+
+  function applyPersistedStoryState(data) {
+    if (!data || !data.storyId || !data.story) return false;
+
+    state.storyId = data.storyId;
+    state.provider = data.provider || null;
+    state.storyResult = data.story;
+    state.selectedVoiceId = data.voiceId || state.selectedVoiceId;
+    state.audioFullUrl = resolveStoryAudioUrl(data.audioUrl);
+    state.audioResult = state.audioFullUrl
+      ? (data.audioResult || { audioUrl: state.audioFullUrl })
+      : null;
+    state.audioVoiceId = data.voiceId || null;
+
+    renderStoryCard();
+    renderAudioPlayer();
+    if (state.audioFullUrl) hydrateStoryAudioPlayer();
+    renderVoiceCards($("#voice-search") && $("#voice-search").value);
+    updateSummaries();
+    updateHomeStoryCta();
+    updateCenterCardState();
+    updatePrimaryButton();
+    updateDownloadControls();
+    return true;
   }
 
   function loadLastStory() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEYS.lastStory);
+      var raw = readUserStorage("lastStory");
       if (!raw) return;
-      var data = JSON.parse(raw);
-      state.storyId = data.storyId;
-      state.provider = data.provider;
-      state.storyResult = data.story;
-      state.selectedVoiceId = data.voiceId || state.selectedVoiceId;
-      state.audioFullUrl = isStoryAudioUrl(data.audioUrl) ? data.audioUrl : null;
-      state.audioResult = state.audioFullUrl ? { audioUrl: state.audioFullUrl } : null;
-      state.audioVoiceId = data.voiceId || null;
+      applyPersistedStoryState(JSON.parse(raw));
+    } catch (e) { /* ignore corrupt data */ }
+  }
+
+  async function restoreLastStoryFromServer() {
+    if (mockFrontendMode || !window.StorytellingAPI || !getCurrentUserId()) return false;
+
+    try {
+      var storiesResult = await window.StorytellingAPI.getStoriesBySession(getSessionId(), 5);
+      if (!storiesResult.success || !storiesResult.stories || !storiesResult.stories.length) {
+        return false;
+      }
+
+      var latest = storiesResult.stories[0];
+      var restored = false;
+
+      if (!state.storyResult || state.storyId !== latest.id) {
+        state.storyId = latest.id;
+        state.provider = latest.provider;
+        state.storyResult = latest.story;
+        if (Number.isFinite(latest.age) || latest.age === 0) {
+          state.storyResult.age = latest.age;
+        }
+        restored = true;
+      }
+
+      if (!state.audioFullUrl) {
+        var audioResult = await window.StorytellingAPI.getStoryAudioList(latest.id);
+        if (audioResult.success && audioResult.audio && audioResult.audio.length) {
+          var newestAudio = audioResult.audio[0];
+          var voiceIdFromAudio = findVoiceIdByBackendVoice(newestAudio.voice);
+          state.audioFullUrl = window.StorytellingAPI.buildFullAudioUrl(newestAudio.audioUrl);
+          state.audioResult = newestAudio;
+          state.audioVoiceId = voiceIdFromAudio || state.audioVoiceId;
+          if (voiceIdFromAudio) state.selectedVoiceId = voiceIdFromAudio;
+          restored = true;
+        }
+      }
+
+      if (!restored) return false;
+
+      saveLastStory();
       renderStoryCard();
       renderAudioPlayer();
-      if (state.audioFullUrl) hydrateStoryAudioPlayer();
+      if (state.audioFullUrl) await hydrateStoryAudioPlayer();
       renderVoiceCards($("#voice-search") && $("#voice-search").value);
       updateSummaries();
       updateHomeStoryCta();
-    } catch (e) { /* ignore corrupt data */ }
-    updateCenterCardState();
+      updateCenterCardState();
+      updatePrimaryButton();
+      updateDownloadControls();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function restoreUserStoryState() {
+    if (!state.storyResult || !state.audioFullUrl) {
+      await restoreLastStoryFromServer();
+    } else if (state.audioFullUrl && !audioElement) {
+      await hydrateStoryAudioPlayer();
+      updateDownloadControls();
+      updateHomePlayCard();
+    }
+
+    if (!state.storyResult) updateHero(null);
+    updatePrimaryButton();
+    updateDownloadControls();
+    updateHomeStoryCta();
   }
 
   function addToHistory(item) {
     state.history.unshift(item);
     if (state.history.length > 30) state.history = state.history.slice(0, 30);
-    localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
+    writeUserStorage("history", JSON.stringify(state.history));
     renderHistory();
   }
 
   function loadHistory() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEYS.history);
+      var raw = readUserStorage("history");
       state.history = raw ? JSON.parse(raw) : [];
     } catch (e) {
       state.history = [];
@@ -1431,7 +1565,7 @@
       playBtn.addEventListener("click", function () {
         stopVoicePlayback();
         if (audioElement) audioElement.pause();
-        state.audioFullUrl = isStoryAudioUrl(item.audioUrl) ? item.audioUrl : null;
+        state.audioFullUrl = resolveStoryAudioUrl(item.audioUrl);
         renderAudioPlayer();
         if (state.audioFullUrl) {
           hydrateStoryAudioPlayer().then(function () {
@@ -1492,7 +1626,7 @@
     state.provider = item.provider;
     state.storyResult = item.story;
     state.selectedVoiceId = item.voiceId || state.selectedVoiceId;
-    state.audioFullUrl = isStoryAudioUrl(item.audioUrl) ? item.audioUrl : null;
+    state.audioFullUrl = resolveStoryAudioUrl(item.audioUrl);
     state.audioVoiceId = item.voiceId || null;
 
     if (item.formSnapshot) {
@@ -1529,12 +1663,12 @@
     state.audioResult = null;
     state.audioFullUrl = null;
     state.audioVoiceId = null;
-    localStorage.removeItem(STORAGE_KEYS.lastStory);
+    writeUserStorage("lastStory", null);
   }
 
   function clearHistory() {
     state.history = [];
-    localStorage.removeItem(STORAGE_KEYS.history);
+    writeUserStorage("history", null);
     clearActiveStory();
     closeHistoryDrawer();
     window.location.reload();
@@ -1749,8 +1883,8 @@
         renderAudioPlayer();
         saveLastStory();
         if (state.history.length && state.history[0].storyId === state.storyId) {
-          state.history[0].audioUrl = state.audioFullUrl;
-          localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
+          state.history[0].audioUrl = normalizeStoryAudioUrlForStorage(state.audioFullUrl);
+          writeUserStorage("history", JSON.stringify(state.history));
           renderHistory();
         }
         if (!options.suppressToast) {
@@ -1792,8 +1926,8 @@
       renderAudioPlayer();
       saveLastStory();
       if (state.history.length && state.history[0].storyId === state.storyId) {
-        state.history[0].audioUrl = state.audioFullUrl;
-        localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
+        state.history[0].audioUrl = normalizeStoryAudioUrlForStorage(state.audioFullUrl);
+        writeUserStorage("history", JSON.stringify(state.history));
         renderHistory();
       }
       var ready = await hydrateStoryAudioPlayer();
@@ -2140,6 +2274,7 @@
     renderSliders();
     loadHistory();
     loadLastStory();
+    restoreUserStoryState();
     if (!state.storyResult) updateHero(null);
     updateSummaries();
     updateCharCount();
