@@ -119,6 +119,7 @@
   let storyCreateScrollObserver = null;
   let homeTimelineSeeking = false;
   let homeTimelineBound = false;
+  let storyRestorePromise = null;
 
   var CREATE_LOADING_HINTS = [
     "لطفاً چند لحظه صبر کنید...",
@@ -330,7 +331,7 @@
     var playIcon = $("#home-play-icon");
     if (!card) return;
 
-    var show = !!(state.storyResult && state.audioFullUrl);
+    var show = hasStoryAudioAvailable();
     card.hidden = !show;
     if (!show) {
       if (playBtn) playBtn.classList.remove("home-play-card__play--playing");
@@ -709,18 +710,10 @@
         }
       }
       showError(formatApiError(e, "بارگذاری فایل صوتی ناموفق بود."));
-      state.audioFullUrl = null;
-      state.audioResult = null;
-      state.audioVoiceId = null;
-      if (wrap) {
-        wrap.hidden = true;
-        wrap.innerHTML = "";
-      }
-      audioElement = null;
-      revokeStoryAudioBlobUrl();
       updatePrimaryButton();
       updateDownloadControls();
       updateHomePlayCard();
+      updateCenterCardState();
       return false;
     }
   }
@@ -761,8 +754,27 @@
   }
 
   function getPlaybackUrl() {
-    if (useApiPlayback() && state.audioFullUrl) return state.audioFullUrl;
+    if (useApiPlayback()) {
+      var url = ensureStoryAudioUrl();
+      if (url) return url;
+    }
     return getVoiceSampleUrl();
+  }
+
+  function ensureStoryAudioUrl() {
+    if (state.audioFullUrl) return state.audioFullUrl;
+    var candidate = state.audioResult && state.audioResult.audioUrl;
+    if (!candidate) return null;
+    var resolved = resolveStoryAudioUrl(candidate);
+    if (!resolved && window.StorytellingAPI) {
+      resolved = window.StorytellingAPI.buildFullAudioUrl(candidate);
+    }
+    if (resolved) state.audioFullUrl = resolved;
+    return state.audioFullUrl || null;
+  }
+
+  function hasStoryAudioAvailable() {
+    return !!(state.storyResult && ensureStoryAudioUrl());
   }
 
   function formatApiError(err, fallback) {
@@ -786,7 +798,7 @@
   }
 
   function updateDownloadControls() {
-    var hasAudio = !!state.audioFullUrl;
+    var hasAudio = hasStoryAudioAvailable();
     var disabled = !hasAudio || state.isGeneratingAudio || state.isDownloading;
     var footerBtn = $("#btn-download");
     var homeBtn = $("#btn-home-download");
@@ -1221,7 +1233,7 @@
     var centerCard = document.querySelector(".panel--center .center-card");
     if (!centerCard) return;
     centerCard.classList.toggle("center-card--has-story", !!state.storyResult);
-    centerCard.classList.toggle("center-card--has-audio", !!state.audioFullUrl);
+    centerCard.classList.toggle("center-card--has-audio", hasStoryAudioAvailable());
   }
 
   function startCreateAudioProgress() {
@@ -1503,11 +1515,14 @@
     state.provider = data.provider || null;
     state.storyResult = data.story;
     state.selectedVoiceId = data.voiceId || state.selectedVoiceId;
-    state.audioFullUrl = resolveStoryAudioUrl(data.audioUrl);
-    state.audioResult = state.audioFullUrl
-      ? (data.audioResult || { audioUrl: state.audioFullUrl })
-      : null;
+    state.audioResult = data.audioResult || null;
     state.audioVoiceId = data.voiceId || null;
+    var storedAudioPath = data.audioUrl || (data.audioResult && data.audioResult.audioUrl);
+    state.audioFullUrl = resolveStoryAudioUrl(storedAudioPath);
+    if (!state.audioFullUrl && storedAudioPath && window.StorytellingAPI) {
+      state.audioFullUrl = window.StorytellingAPI.buildFullAudioUrl(storedAudioPath);
+    }
+    ensureStoryAudioUrl();
 
     renderStoryCard();
     renderAudioPlayer();
@@ -1517,6 +1532,7 @@
     updateCenterCardState();
     updatePrimaryButton();
     updateDownloadControls();
+    updateHomePlayCard();
     return true;
   }
 
@@ -1614,6 +1630,7 @@
       updateCenterCardState();
       updatePrimaryButton();
       updateDownloadControls();
+      updateHomePlayCard();
       return true;
     } catch (e) {
       return false;
@@ -1621,27 +1638,40 @@
   }
 
   async function restoreUserStoryState() {
-    if (state.storyId && !state.audioFullUrl) {
-      await refreshStoryAudioFromServer(state.storyId);
-    }
+    if (storyRestorePromise) return storyRestorePromise;
 
-    if (!state.storyResult || !state.audioFullUrl) {
-      await restoreLastStoryFromServer();
-    }
+    storyRestorePromise = (async function () {
+      ensureStoryAudioUrl();
 
-    if (state.storyId && state.storyResult && !state.audioFullUrl) {
-      await refreshStoryAudioFromServer(state.storyId);
-    }
+      if (state.storyId && !state.audioFullUrl) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
 
-    if (state.audioFullUrl) {
-      await hydrateStoryAudioPlayer();
-    }
+      if (!state.storyResult || !state.audioFullUrl) {
+        await restoreLastStoryFromServer();
+      }
 
-    if (!state.storyResult) updateHero(null);
-    updatePrimaryButton();
-    updateDownloadControls();
-    updateHomeStoryCta();
-    updateCenterCardState();
+      if (state.storyId && state.storyResult && !state.audioFullUrl) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
+
+      ensureStoryAudioUrl();
+
+      if (state.audioFullUrl) {
+        await hydrateStoryAudioPlayer();
+      }
+
+      if (!state.storyResult) updateHero(null);
+      updatePrimaryButton();
+      updateDownloadControls();
+      updateHomeStoryCta();
+      updateCenterCardState();
+      updateHomePlayCard();
+    })().finally(function () {
+      storyRestorePromise = null;
+    });
+
+    return storyRestorePromise;
   }
 
   function addToHistory(item) {
@@ -1910,6 +1940,7 @@
       if (signal.aborted) return;
       setStoryCreateLoading(false);
       if (isMobileLayout()) setMobileTab("home");
+      updateCenterCardState();
       updateHomePlayCard();
       if (audioReady) {
         showToast("قصه و صدا در صفحه خانه آماده‌اند.", "success");
@@ -2028,8 +2059,11 @@
         return true;
       } finally {
         state.isGeneratingAudio = false;
+        ensureStoryAudioUrl();
         updatePrimaryButton();
         updateDownloadControls();
+        updateCenterCardState();
+        updateHomePlayCard();
       }
     }
 
@@ -2055,6 +2089,7 @@
         throw new Error("آدرس فایل صوتی از سرور دریافت نشد.");
       }
       state.audioFullUrl = window.StorytellingAPI.buildFullAudioUrl(result.audio.audioUrl);
+      ensureStoryAudioUrl();
       renderAudioPlayer();
       saveLastStory();
       if (state.history.length && state.history[0].storyId === state.storyId) {
@@ -2062,8 +2097,12 @@
         writeUserStorage("history", JSON.stringify(state.history));
         renderHistory();
       }
+      updateCenterCardState();
+      updateHomePlayCard();
       var ready = await hydrateStoryAudioPlayer();
-      if (!ready) return false;
+      updateCenterCardState();
+      updateHomePlayCard();
+      if (!ready && state.audioFullUrl) return true;
       if (!options.suppressToast) {
         showToast("فایل صوتی آماده است!", "success");
       }
@@ -2076,8 +2115,11 @@
       return false;
     } finally {
       state.isGeneratingAudio = false;
+      ensureStoryAudioUrl();
       updatePrimaryButton();
       updateDownloadControls();
+      updateCenterCardState();
+      updateHomePlayCard();
     }
   }
 
