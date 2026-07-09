@@ -323,6 +323,10 @@
     updateHomePlayCard();
   }
 
+  function shouldShowHomePlayCard() {
+    return !!(state.storyResult && (state.storyId || hasStoryAudioAvailable()));
+  }
+
   function updateHomePlayCard() {
     var card = $("#home-play-card");
     var titleEl = $("#home-play-title");
@@ -331,7 +335,7 @@
     var playIcon = $("#home-play-icon");
     if (!card) return;
 
-    var show = hasStoryAudioAvailable();
+    var show = shouldShowHomePlayCard();
     card.hidden = !show;
     if (!show) {
       if (playBtn) playBtn.classList.remove("home-play-card__play--playing");
@@ -668,6 +672,7 @@
 
   async function hydrateStoryAudioPlayer(options) {
     options = options || {};
+    ensureStoryAudioUrl();
     if (!useApiPlayback() || !state.audioFullUrl) return false;
 
     var wrap = $("#audio-player-wrap");
@@ -1233,7 +1238,7 @@
     var centerCard = document.querySelector(".panel--center .center-card");
     if (!centerCard) return;
     centerCard.classList.toggle("center-card--has-story", !!state.storyResult);
-    centerCard.classList.toggle("center-card--has-audio", hasStoryAudioAvailable());
+    centerCard.classList.toggle("center-card--has-audio", shouldShowHomePlayCard());
   }
 
   function startCreateAudioProgress() {
@@ -1431,13 +1436,16 @@
   }
 
   function renderAudioPlayer() {
+    ensureStoryAudioUrl();
     var wrap = $("#audio-player-wrap");
     if (!wrap) return;
-    if (!state.audioFullUrl) {
+    if (!hasStoryAudioAvailable()) {
       wrap.hidden = true;
-      wrap.innerHTML = "";
-      audioElement = null;
-      revokeStoryAudioBlobUrl();
+      if (!state.storyId) {
+        wrap.innerHTML = "";
+        audioElement = null;
+        revokeStoryAudioBlobUrl();
+      }
       resetHomePlayTimeline();
       updateDownloadControls();
       updateCenterCardState();
@@ -1445,7 +1453,9 @@
       return;
     }
     if (useApiPlayback()) {
-      renderAudioPlayerShell();
+      if (!audioElement || !wrap.querySelector("#story-audio")) {
+        renderAudioPlayerShell();
+      }
       updateCenterCardState();
       updateDownloadControls();
       updateHomePlayCard();
@@ -2125,28 +2135,34 @@
 
   function togglePlayPause() {
     if (useApiPlayback()) {
-      if (!state.audioFullUrl) {
+      if (!ensureStoryAudioUrl()) {
         if (!state.storyId) return;
         refreshStoryAudioFromServer(state.storyId).then(function (refreshed) {
           if (refreshed) togglePlayPause();
+          else updateHomePlayCard();
         });
         return;
       }
       if (!audioElement || !audioElement.src) {
         hydrateStoryAudioPlayer().then(function (ready) {
-          if (ready && audioElement) audioElement.play().catch(function () {});
+          if (ready && audioElement) {
+            audioElement.play().catch(function () {});
+          }
+          updateHomePlayCard();
         });
         return;
       }
       if (state.isPlaying) {
         audioElement.pause();
         syncNativeBackgroundAmbience(false);
+        syncPlayingState(false);
       } else {
         audioElement.play().catch(function () {
           syncNativeBackgroundAmbience(false);
           showToast("برای پخش، دکمه پلی پلیر را بزن.", "info");
         });
       }
+      updateHomePlayCard();
       return;
     }
 
@@ -2222,6 +2238,24 @@
     } finally {
       state.isDownloading = false;
       updateDownloadControls();
+      updateHomePlayCard();
+      updateCenterCardState();
+    }
+  }
+
+  async function handleHeaderRefresh() {
+    var btn = $("#btn-header-refresh");
+    if (btn) btn.disabled = true;
+    try {
+      ensureStoryAudioUrl();
+      if (state.storyId) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
+      await restoreUserStoryState();
+      renderStoryCard();
+      updateHomePlayCard();
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -2412,7 +2446,7 @@
     $("#btn-cancel-create-modal") && $("#btn-cancel-create-modal").addEventListener("click", cancelStoryGeneration);
 
     $("#btn-home-play") && $("#btn-home-play").addEventListener("click", function () {
-      if (!state.audioFullUrl) return;
+      if (!shouldShowHomePlayCard()) return;
       togglePlayPause();
     });
 
@@ -2421,6 +2455,7 @@
     $("#btn-home-download") && $("#btn-home-download").addEventListener("click", handleDownload);
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
+    $("#btn-header-refresh") && $("#btn-header-refresh").addEventListener("click", handleHeaderRefresh);
     $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();

@@ -1721,19 +1721,19 @@ body.app-shell .header__title .brand-name__bye {
   color: #ffffff;
 }
 
-body.app-shell .header__history-btn {
+body.app-shell .header__toolbar-btn {
   display: inline-flex;
   color: #ffffff;
 }
 
-body.app-shell .header__history-btn:hover:not(:disabled),
-body.app-shell .header__history-btn:focus-visible,
-body.app-shell .header__history-btn.btn--ghost:hover:not(:disabled) {
+body.app-shell .header__toolbar-btn:hover:not(:disabled),
+body.app-shell .header__toolbar-btn:focus-visible,
+body.app-shell .header__toolbar-btn.btn--ghost:hover:not(:disabled) {
   color: var(--accent-2);
   background: transparent;
 }
 
-body.app-shell .header__history-btn:active:not(:disabled) {
+body.app-shell .header__toolbar-btn:active:not(:disabled) {
   color: #FBCFE8;
   background: transparent;
 }
@@ -2020,7 +2020,7 @@ body.app-shell .chip {
     font-size: 1.05rem;
   }
 
-  .header__history-btn {
+  .header__toolbar-btn {
     display: inline-flex;
   }
 
@@ -2310,6 +2310,48 @@ body.app-shell .chip {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.header__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.header__toolbar-btn {
+  display: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 8px;
+}
+
+.header__toolbar-btn.btn--ghost {
+  border: none;
+  background: transparent;
+}
+
+.header__toolbar-btn:hover:not(:disabled),
+.header__toolbar-btn:focus-visible,
+.header__toolbar-btn.btn--ghost:hover:not(:disabled) {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.header__toolbar-btn:active:not(:disabled) {
+  background: transparent;
+  color: var(--accent);
+  transform: none;
+}
+
+.header__toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .profile-wrap {
@@ -3237,36 +3279,6 @@ body[data-mobile-tab="home"] .center-card--has-audio .audio-player-wrap {
   display: none;
 }
 
-.header__history-btn {
-  display: none;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  box-shadow: none;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 8px;
-}
-
-.header__history-btn.btn--ghost {
-  border: none;
-  background: transparent;
-}
-
-.header__history-btn:hover:not(:disabled),
-.header__history-btn:focus-visible,
-.header__history-btn.btn--ghost:hover:not(:disabled) {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  box-shadow: none;
-}
-
-.header__history-btn:active:not(:disabled) {
-  background: transparent;
-  color: var(--accent);
-  transform: none;
-}
 
 .player-bar__compact {
   display: none;
