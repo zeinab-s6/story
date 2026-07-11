@@ -1697,7 +1697,7 @@ html:has(body.app-shell) {
 }
 
 @media (min-width: 481px) {
-  body.app-shell {
+  body.app-shell .app-frame {
     margin-block: 16px;
     min-height: calc(100dvh - 32px);
     border-radius: 24px;
@@ -1710,12 +1710,24 @@ body.app-shell {
   --bottom-nav-h: 62px;
   --app-frame-w: min(480px, 100vw);
   width: 100%;
+  max-width: none;
+  margin: 0;
+  min-height: 100dvh;
+  overflow: visible;
+  padding-bottom: 0;
+  box-shadow: none;
+}
+
+body.app-shell .app-frame {
+  width: 100%;
   max-width: var(--app-frame-w);
   margin-inline: auto;
   min-height: 100dvh;
   overflow-x: hidden;
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
   box-shadow: 0 0 0 1px rgba(47, 49, 54, 0.06), 0 16px 48px rgba(47, 49, 54, 0.12);
+  position: relative;
+  isolation: isolate;
 }
 
 body.app-shell .header {
@@ -1810,6 +1822,35 @@ body.app-shell[data-mobile-tab="home"] .panel--center {
 
 body.app-shell[data-mobile-tab="home"] .panel--center .center-card {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.app-shell[data-mobile-tab="home"] .center-card--has-story {
+  min-height: 0;
+}
+
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-result {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-section--highlight {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-block--main {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 body.app-shell[data-mobile-tab="home"] .home-footer {
@@ -2011,8 +2052,17 @@ body.app-shell .drawer--open {
   transform: translate3d(0, 0, 0);
 }
 
-body.app-shell .overlay {
-  inset: 0;
+body.app-shell .overlay,
+body.app-shell #drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  z-index: 350;
 }
 
 body.app-shell .btn {
@@ -2146,7 +2196,7 @@ body.app-shell .chip {
     display: none;
   }
 
-  body.app-shell {
+  body.app-shell .app-frame {
     padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
   }
 
@@ -2928,7 +2978,7 @@ body.app-shell.story-creating .story-create-loading:not([hidden]) {
 .create-modal {
   position: fixed;
   inset: 0;
-  z-index: 250;
+  z-index: 400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3462,7 +3512,9 @@ body.onboarding-page {
 .onboarding-shell {
   width: min(480px, 100%);
   max-height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   flex-shrink: 1;
@@ -3914,16 +3966,27 @@ body.app-shell #history-drawer.drawer {
   height: min(85dvh, 640px) !important;
   transform: translate3d(0, 105%, 0) !important;
   border-right: none !important;
+  z-index: 360 !important;
 }
 
 body.app-shell #history-drawer.drawer.drawer--open {
   transform: translate3d(0, 0, 0) !important;
 }
 
-body.app-shell.drawer-open .overlay {
+body.app-shell.drawer-open .overlay,
+body.app-shell.drawer-open #drawer-overlay {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+body.app-shell.drawer-open .bottom-nav {
+  pointer-events: none;
+}
+
+body.app-shell.drawer-open .app-frame {
+  pointer-events: none;
+  user-select: none;
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

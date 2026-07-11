@@ -42,9 +42,9 @@
 
   function redirectAfterAuth(user) {
     if (user && user.childGender) {
-      window.location.href = "/home";
+      window.location.replace("/home");
     } else {
-      window.location.href = "/onboarding";
+      window.location.replace("/onboarding");
     }
   }
 

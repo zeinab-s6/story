@@ -19,14 +19,18 @@
   var parentNameEl = document.getElementById("onboarding-parent-name");
   var childNameInput = document.getElementById("onboarding-child-name");
 
+  var BRAND_SUBMIT_LABEL =
+    'ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>';
+
   function showError(msg) {
     if (!errorEl) return;
     errorEl.textContent = msg;
     errorEl.hidden = !msg;
   }
 
-  var BRAND_SUBMIT_LABEL =
-    'ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>';
+  function redirectToLogin() {
+    window.location.replace("/login");
+  }
 
   function hasValidLocalSession() {
     if (!window.StorytellingAuth) return false;
@@ -35,24 +39,10 @@
     return !!(token && user);
   }
 
-  function setFormEnabled(enabled) {
-    if (!form) return;
-    form.querySelectorAll("input").forEach(function (el) {
-      el.disabled = !enabled;
-    });
-    if (submitBtn) {
-      if (!enabled) {
-        submitBtn.disabled = true;
-        return;
-      }
-      var selected = form.querySelector('input[name="childGender"]:checked');
-      submitBtn.disabled = !selected;
-    }
-  }
-
-  function showLoginRequired() {
-    showError("ابتدا وارد حساب کاربری شوید.");
-    setFormEnabled(false);
+  function updateSubmitState() {
+    if (!submitBtn || !form) return;
+    var selected = form.querySelector('input[name="childGender"]:checked');
+    submitBtn.disabled = !selected;
   }
 
   function setLoading(loading) {
@@ -64,6 +54,7 @@
       return;
     }
     submitBtn.innerHTML = BRAND_SUBMIT_LABEL;
+    updateSubmitState();
   }
 
   function getPreviewLabel(gender) {
@@ -76,7 +67,7 @@
     if (!gender || !AVATARS[gender]) return;
     if (previewImg) previewImg.src = AVATARS[gender];
     if (previewLabel) previewLabel.textContent = getPreviewLabel(gender);
-    if (submitBtn && hasValidLocalSession()) submitBtn.disabled = false;
+    updateSubmitState();
   }
 
   function initParentName() {
@@ -88,7 +79,6 @@
 
   if (childNameInput) {
     childNameInput.addEventListener("input", function () {
-      if (!hasValidLocalSession()) return;
       var selected = form && form.querySelector('input[name="childGender"]:checked');
       if (selected) updatePreview(selected.value);
       else if (previewLabel) {
@@ -101,7 +91,6 @@
   if (form) {
     form.querySelectorAll('input[name="childGender"]').forEach(function (input) {
       input.addEventListener("change", function () {
-        if (!hasValidLocalSession()) return;
         showError("");
         updatePreview(input.value);
       });
@@ -112,7 +101,7 @@
       showError("");
 
       if (!hasValidLocalSession()) {
-        showLoginRequired();
+        redirectToLogin();
         return;
       }
 
@@ -137,6 +126,10 @@
         }
         window.location.href = "/home";
       } catch (err) {
+        if (err.status === 401) {
+          redirectToLogin();
+          return;
+        }
         var msg = "ذخیره اطلاعات ناموفق بود.";
         if (err.message === "Failed to fetch") {
           msg = "اتصال به سرور برقرار نشد.";
@@ -150,9 +143,6 @@
     });
   }
 
-  if (!hasValidLocalSession()) {
-    showLoginRequired();
-  } else {
-    initParentName();
-  }
+  initParentName();
+  updateSubmitState();
 })();

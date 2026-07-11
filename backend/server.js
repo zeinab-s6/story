@@ -66,7 +66,7 @@ function serveFrontendPage(filename) {
   };
 }
 
-app.get('/', serveFrontendPage('index.html'));
+app.get('/', serveFrontendPage('login.html'));
 app.get('/home', serveFrontendPage('index.html'));
 app.get('/index', serveFrontendPage('index.html'));
 app.get('/login', serveFrontendPage('login.html'));

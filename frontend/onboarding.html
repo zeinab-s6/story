@@ -12,6 +12,12 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script>
+    if (!window.StorytellingAuth.requireAuth()) { /* redirect to login */ }
+    if (window.StorytellingAuth.hasChildProfile()) {
+      window.location.replace("/home");
+    }
+  </script>
 </head>
 <body class="onboarding-page">
   <div class="app-bg app-bg--headspace" aria-hidden="true"></div>

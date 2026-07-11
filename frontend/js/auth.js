@@ -19,10 +19,20 @@
   }
 
   function saveSession(token, user) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    if (user && user.id != null) {
-      localStorage.setItem(ACTIVE_USER_KEY, String(user.id));
+    if (!token || !user) {
+      throw new Error("اطلاعات ورود ناقص است.");
+    }
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (user.id != null) {
+        localStorage.setItem(ACTIVE_USER_KEY, String(user.id));
+      }
+    } catch (e) {
+      throw new Error("ذخیره نشست در دستگاه ممکن نیست. حافظه مرورگر را بررسی کن.");
+    }
+    if (localStorage.getItem(TOKEN_KEY) !== token) {
+      throw new Error("ذخیره نشست در دستگاه ممکن نیست.");
     }
   }
 
@@ -38,7 +48,7 @@
 
   function requireAuth() {
     if (!isLoggedIn()) {
-      window.location.href = "/login";
+      window.location.replace("/login");
       return false;
     }
     return true;
@@ -47,9 +57,9 @@
   function redirectIfLoggedIn() {
     if (isLoggedIn()) {
       if (hasChildProfile()) {
-        window.location.href = "/home";
+        window.location.replace("/home");
       } else {
-        window.location.href = "/onboarding";
+        window.location.replace("/onboarding");
       }
     }
   }
@@ -75,7 +85,7 @@
 
   function requireChildProfile() {
     if (!hasChildProfile()) {
-      window.location.href = "/onboarding";
+      window.location.replace("/onboarding");
       return false;
     }
     return true;

@@ -161,6 +161,9 @@
     var tabChanged = nextTab !== mobileTab;
     prevMobileTab = mobileTab;
     mobileTab = nextTab;
+    if (tabChanged) {
+      closeHistoryDrawer();
+    }
     if (!state.isGeneratingStory && !state.isGeneratingAudio) {
       resetCreateFlowState();
     }
