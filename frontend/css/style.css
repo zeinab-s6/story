@@ -1397,17 +1397,21 @@ input[type="range"]:focus-visible {
 
 .drawer {
   position: fixed;
-  top: 0;
+  top: auto;
+  bottom: 0;
   left: 0;
+  right: 0;
   z-index: 210;
-  width: min(400px, 92vw);
-  height: 100%;
+  width: min(480px, 100vw);
+  max-width: 100vw;
+  margin-inline: auto;
+  height: min(85dvh, 640px);
   background: #FFFFFF;
-  border-right: 1px solid var(--glass-border);
-  box-shadow: 8px 0 40px rgba(45, 42, 38, 0.12);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -8px 40px rgba(45, 42, 38, 0.15);
   display: flex;
   flex-direction: column;
-  transform: translateX(-105%);
+  transform: translate3d(0, 105%, 0);
   visibility: hidden;
   pointer-events: none;
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
@@ -1415,7 +1419,7 @@ input[type="range"]:focus-visible {
 }
 
 .drawer--open {
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0);
   visibility: visible;
   pointer-events: auto;
 }
@@ -1470,7 +1474,7 @@ body.app-shell #drawer-close.btn.btn--icon {
 
 .history-card {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 12px;
   padding: 14px;
@@ -1480,6 +1484,11 @@ body.app-shell #drawer-close.btn.btn--icon {
   transition: border-color var(--transition);
 }
 
+.history-card__main {
+  flex: 1;
+  min-width: 0;
+}
+
 .history-card:hover {
   border-color: var(--accent);
 }
@@ -1487,6 +1496,8 @@ body.app-shell #drawer-close.btn.btn--icon {
 .history-card h4 {
   font-size: 0.9rem;
   margin-bottom: 4px;
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .history-card__meta {
@@ -1506,6 +1517,7 @@ body.app-shell #drawer-close.btn.btn--icon {
   gap: 6px;
   flex-shrink: 0;
   align-items: center;
+  align-self: center;
 }
 
 .history-card .history-play.btn.btn--icon.btn--sm,
@@ -1569,8 +1581,15 @@ body.app-shell .history-card .history-play--loading.btn.btn--icon.btn--sm {
 }
 
 .drawer__footer {
+  flex-shrink: 0;
   padding: 16px 20px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--glass-border);
+  background: #fff;
+}
+
+.drawer__footer .btn {
+  width: 100%;
 }
 
 /* ---- Toast ---- */
@@ -1690,9 +1709,11 @@ body.app-shell {
   --header-h: 52px;
   --bottom-nav-h: 62px;
   --app-frame-w: min(480px, 100vw);
+  width: 100%;
   max-width: var(--app-frame-w);
   margin-inline: auto;
   min-height: 100dvh;
+  overflow-x: hidden;
   padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 12px);
   box-shadow: 0 0 0 1px rgba(47, 49, 54, 0.06), 0 16px 48px rgba(47, 49, 54, 0.12);
 }
@@ -1783,6 +1804,8 @@ body.app-shell[data-mobile-tab="home"] .story-hero {
 body.app-shell[data-mobile-tab="home"] .panel--center {
   display: flex !important;
   flex-direction: column;
+  min-width: 0;
+  width: 100%;
 }
 
 body.app-shell[data-mobile-tab="home"] .panel--center .center-card {
@@ -1978,14 +2001,18 @@ body.app-shell .drawer {
   left: max(0px, calc((100vw - var(--app-frame-w)) / 2));
   right: auto;
   height: min(85dvh, 640px);
-  transform: translateY(105%);
+  transform: translate3d(0, 105%, 0);
   border-right: none;
   border-top: 1px solid var(--glass-border);
   box-shadow: 0 -8px 40px rgba(45, 42, 38, 0.15);
 }
 
 body.app-shell .drawer--open {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
+}
+
+body.app-shell .overlay {
+  inset: 0;
 }
 
 body.app-shell .btn {
@@ -2251,14 +2278,14 @@ body.app-shell .chip {
     left: 0;
     right: 0;
     height: min(85dvh, 640px);
-    transform: translateY(105%);
+    transform: translate3d(0, 105%, 0);
     border-right: none;
     border-top: 1px solid var(--glass-border);
     box-shadow: 0 -8px 40px rgba(45, 42, 38, 0.15);
   }
 
   .drawer--open {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 
   .btn {
@@ -2740,8 +2767,13 @@ body[data-mobile-tab="home"] .center-card--has-story .audio-player-wrap {
 }
 
 .stories-clear-btn {
-  margin-top: 12px;
-  align-self: flex-start;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.panel--stories .card {
+  display: flex;
+  flex-direction: column;
 }
 
 .stories-clear-btn:disabled,
@@ -3140,8 +3172,21 @@ body.app-shell.create-modal-open .bottom-nav {
   cursor: not-allowed;
 }
 
+.home-play-card__download--ready:not(:disabled) {
+  background: linear-gradient(135deg, rgba(219, 39, 119, 0.1), rgba(236, 72, 153, 0.14));
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 2px 10px rgba(219, 39, 119, 0.14);
+}
+
+.home-play-card__download--ready:not(:disabled):hover {
+  background: linear-gradient(135deg, rgba(219, 39, 119, 0.16), rgba(236, 72, 153, 0.2));
+  box-shadow: 0 4px 14px rgba(219, 39, 119, 0.22);
+}
+
 .home-play-card__download--loading {
-  opacity: 0.6;
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .home-play-card__download-icon {
@@ -3809,7 +3854,77 @@ body.onboarding-page .btn--primary:disabled {
   }
 }
 
-/* ---- Reduced Motion ---- */
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-section--highlight {
+  min-width: 0;
+}
+
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-block--main {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+body.app-shell[data-mobile-tab="home"] .home-play-card {
+  margin-top: auto;
+}
+
+body[data-mobile-tab="home"] .panel--center {
+  display: flex !important;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+}
+
+body[data-mobile-tab="home"] .center-card--has-story .story-section--highlight {
+  min-width: 0;
+}
+
+body[data-mobile-tab="home"] .center-card--has-story .story-block--main {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+body[data-mobile-tab="home"] .home-play-card {
+  margin-top: auto;
+}
+
+@media (max-width: 480px) {
+  .history-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-card__actions {
+    align-self: stretch;
+    justify-content: stretch;
+  }
+
+  .history-card .history-restore.btn {
+    width: 100%;
+  }
+}
+
+/* App-shell drawer: always bottom sheet, never side drawer */
+body.app-shell #history-drawer.drawer {
+  top: auto !important;
+  bottom: 0 !important;
+  left: max(0px, calc((100vw - var(--app-frame-w)) / 2)) !important;
+  right: auto !important;
+  width: var(--app-frame-w) !important;
+  max-width: var(--app-frame-w) !important;
+  height: min(85dvh, 640px) !important;
+  transform: translate3d(0, 105%, 0) !important;
+  border-right: none !important;
+}
+
+body.app-shell #history-drawer.drawer.drawer--open {
+  transform: translate3d(0, 0, 0) !important;
+}
+
+body.app-shell.drawer-open .overlay {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -437,6 +437,7 @@
       window.StorytellingIcons.setPlayIcon(playIcon, state.isPlaying);
     }
     updateHomePlayTimeline();
+    updateDownloadControls();
   }
 
   function formatAudioTime(seconds) {
@@ -1024,8 +1025,8 @@
   }
 
   function updateDownloadControls() {
-    var canUseAudio = hasStoryAudioAvailable() || !!state.storyId;
-    var disabled = !canUseAudio || state.isGeneratingAudio || state.isDownloading;
+    var canDownload = !!(state.storyResult && (ensureStoryAudioUrl() || state.storyId || state.isPlaying));
+    var disabled = !canDownload || state.isGeneratingAudio || state.isDownloading;
     var inlineBtn = $("#btn-download-inline");
     var homeDownloadBtn = $("#btn-home-download");
     var regenBtn = $("#btn-regenerate-audio");
@@ -1040,6 +1041,7 @@
         state.isDownloading ? "در حال دانلود..." : "دانلود برای آفلاین"
       );
       homeDownloadBtn.classList.toggle("home-play-card__download--loading", state.isDownloading);
+      homeDownloadBtn.classList.toggle("home-play-card__download--ready", canDownload && !disabled);
     }
     if (regenBtn) {
       regenBtn.hidden = !state.storyResult;
@@ -2448,7 +2450,7 @@
     restoreBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       restoreBtn.disabled = true;
-      restoreHistoryItem(item).then(function (restored) {
+      restoreHistoryItem(item, { autoPlay: true }).then(function (restored) {
         if (!restored) return;
         if (options.closeDrawer) closeHistoryDrawer();
         if (isMobileLayout()) setMobileTab("home");
@@ -2467,8 +2469,14 @@
     var hasHistory = state.history.length > 0;
     var clearStories = $("#btn-clear-stories");
     var clearDrawer = $("#btn-clear-history");
-    if (clearStories) clearStories.disabled = !hasHistory;
-    if (clearDrawer) clearDrawer.disabled = !hasHistory;
+    if (clearStories) {
+      clearStories.disabled = !hasHistory;
+      clearStories.hidden = false;
+    }
+    if (clearDrawer) {
+      clearDrawer.disabled = !hasHistory;
+      clearDrawer.hidden = false;
+    }
   }
 
   function renderStoriesPanel() {
@@ -3005,12 +3013,12 @@
 
   async function handleDownload() {
     if (state.isDownloading || state.isGeneratingAudio) return;
-    if (!state.storyResult || !state.storyId) {
+    if (!state.storyResult) {
       showError("ابتدا یک قصه بساز.");
       return;
     }
 
-    var ready = await ensureStoryAudioReady({ reportError: true });
+    var ready = await ensureStoryAudioReady({ reportError: false });
     if (!ready) {
       ready = await handleGenerateAudio({ suppressToast: true });
     }
@@ -3281,7 +3289,7 @@
     });
 
     $("#btn-home-download") && $("#btn-home-download").addEventListener("click", function () {
-      if (!shouldShowHomePlayCard()) return;
+      if (!state.storyResult) return;
       handleDownload();
     });
 
