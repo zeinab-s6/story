@@ -119,10 +119,11 @@
     });
   }
 
-  async function generateStoryAudio(storyId, payload) {
+  async function generateStoryAudio(storyId, payload, options) {
     return request(apiUrl("/api/stories/" + storyId + "/audio"), {
       method: "POST",
       body: JSON.stringify(payload),
+      signal: options && options.signal,
     });
   }
 

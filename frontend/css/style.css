@@ -41,7 +41,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 body {
@@ -1789,13 +1789,11 @@ body.app-shell .main > .panel {
 
 body.app-shell[data-mobile-tab="home"] .story-hero {
   display: block !important;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell[data-mobile-tab="home"] .panel--center {
   display: flex !important;
   flex-direction: column;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell[data-mobile-tab="home"] .panel--center .center-card {
@@ -1810,7 +1808,6 @@ body.app-shell[data-mobile-tab="home"] .home-footer {
 
 body.app-shell[data-mobile-tab="story"] .panel--left {
   display: flex !important;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell[data-mobile-tab="story"] .card--voice-lib {
@@ -1820,7 +1817,6 @@ body.app-shell[data-mobile-tab="story"] .card--voice-lib {
 body.app-shell[data-mobile-tab="voice"] .panel--left,
 body.app-shell[data-mobile-tab="voice"] .panel--right {
   display: flex !important;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell[data-mobile-tab="voice"] .card--story-setup {
@@ -1846,12 +1842,10 @@ body.app-shell[data-mobile-tab="voice"] .voice-card {
 
 body.app-shell[data-mobile-tab="profile"] .panel--profile {
   display: flex !important;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell[data-mobile-tab="stories"] .panel--stories {
   display: flex !important;
-  animation: mobileScreenIn 0.28s ease;
 }
 
 body.app-shell .main {
@@ -2073,13 +2067,11 @@ body.app-shell .chip {
 
   body[data-mobile-tab="home"] .story-hero {
     display: block !important;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   body[data-mobile-tab="home"] .panel--center {
     display: flex !important;
     flex-direction: column;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   body[data-mobile-tab="home"] .panel--center .center-card {
@@ -2094,7 +2086,6 @@ body.app-shell .chip {
 
   body[data-mobile-tab="story"] .panel--left {
     display: flex !important;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   body[data-mobile-tab="story"] .card--voice-lib {
@@ -2104,7 +2095,6 @@ body.app-shell .chip {
   body[data-mobile-tab="voice"] .panel--left,
   body[data-mobile-tab="voice"] .panel--right {
     display: flex !important;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   body[data-mobile-tab="voice"] .card--story-setup {
@@ -2130,12 +2120,10 @@ body.app-shell .chip {
 
   body[data-mobile-tab="profile"] .panel--profile {
     display: flex !important;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   body[data-mobile-tab="stories"] .panel--stories {
     display: flex !important;
-    animation: mobileScreenIn 0.28s ease;
   }
 
   .player-bar {
@@ -3072,7 +3060,6 @@ body.app-shell.create-modal-open .bottom-nav {
   background: linear-gradient(145deg, #FFF5F9 0%, #FCE7F3 100%);
   border: 1px solid rgba(219, 39, 119, 0.14);
   box-shadow: 0 8px 28px rgba(219, 39, 119, 0.1);
-  animation: mobileScreenIn 0.35s ease;
 }
 
 .story-result .home-play-card {
@@ -3146,7 +3133,6 @@ body.app-shell.create-modal-open .bottom-nav {
   background: #fff;
   border: 1px solid rgba(219, 39, 119, 0.12);
   box-shadow: 0 6px 22px rgba(219, 39, 119, 0.08);
-  animation: mobileScreenIn 0.35s ease;
 }
 
 .home-download-card[hidden] {
