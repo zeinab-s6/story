@@ -180,59 +180,6 @@
           <div class="meta-chip"><span class="meta-chip__label">مدت:</span> <span id="summary-duration">—</span></div>
         </div>
 
-        <div class="home-play-card" id="home-play-card" hidden>
-          <div class="home-play-card__main">
-            <div class="home-play-card__actions">
-              <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
-                <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
-              </button>
-            </div>
-            <div class="home-play-card__body">
-              <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
-              <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
-            </div>
-          </div>
-          <div class="home-play-card__timeline" id="home-play-timeline">
-            <input
-              type="range"
-              class="home-play-card__seek"
-              id="home-play-seek"
-              min="0"
-              max="1000"
-              value="0"
-              step="1"
-              aria-label="جابه‌جایی در قصه"
-              aria-valuemin="0"
-              aria-valuemax="1000"
-              aria-valuenow="0"
-            >
-            <div class="home-play-card__times" aria-hidden="true">
-              <span class="home-play-card__time" id="home-play-time-current">۰:۰۰</span>
-              <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
-            </div>
-          </div>
-        </div>
-
-        <section class="home-download-card" id="home-download-card" hidden aria-label="دانلود صدای قصه">
-          <div class="home-download-card__header">
-            <div class="home-download-card__icon" aria-hidden="true">
-              <span class="app-icon app-icon--md" data-icon="download" id="home-download-icon"></span>
-            </div>
-            <div class="home-download-card__intro">
-              <h3 class="home-download-card__title">دانلود صدای قصه</h3>
-              <p class="home-download-card__meta" id="home-download-meta">فایل صوتی را ذخیره کن و آفلاین گوش بده.</p>
-            </div>
-          </div>
-          <div class="home-download-card__file">
-            <span class="home-download-card__file-label">نام فایل</span>
-            <span class="home-download-card__file-name" id="home-download-filename">—</span>
-          </div>
-          <button type="button" class="home-download-card__action" id="btn-home-download-audio">
-            <span class="home-download-card__action-icon app-icon app-icon--sm" data-icon="download" aria-hidden="true"></span>
-            <span class="home-download-card__action-text" id="home-download-action-text">دریافت فایل صوتی</span>
-          </button>
-        </section>
-
         <div id="center-empty">
           <div class="editor-wrap">
             <label for="story-preview" class="sr-only">پیش‌نمایش قصه</label>
@@ -266,6 +213,59 @@
             <h3>متن قصه</h3>
             <p id="story-text" class="story-block story-block--main">—</p>
           </div>
+
+          <div class="home-play-card" id="home-play-card" hidden>
+            <div class="home-play-card__main">
+              <div class="home-play-card__actions">
+                <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
+                  <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
+                </button>
+              </div>
+              <div class="home-play-card__body">
+                <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
+                <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
+              </div>
+            </div>
+            <div class="home-play-card__timeline" id="home-play-timeline">
+              <input
+                type="range"
+                class="home-play-card__seek"
+                id="home-play-seek"
+                min="0"
+                max="1000"
+                value="0"
+                step="1"
+                aria-label="جابه‌جایی در قصه"
+                aria-valuemin="0"
+                aria-valuemax="1000"
+                aria-valuenow="0"
+              >
+              <div class="home-play-card__times" aria-hidden="true">
+                <span class="home-play-card__time" id="home-play-time-current">۰:۰۰</span>
+                <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
+              </div>
+            </div>
+          </div>
+
+          <section class="home-download-card" id="home-download-card" hidden aria-label="دانلود صدای قصه">
+            <div class="home-download-card__header">
+              <div class="home-download-card__icon" aria-hidden="true">
+                <span class="app-icon app-icon--md" data-icon="download" id="home-download-icon"></span>
+              </div>
+              <div class="home-download-card__intro">
+                <h3 class="home-download-card__title">دانلود صدای قصه</h3>
+              </div>
+            </div>
+            <div class="home-download-card__file">
+              <span class="home-download-card__file-label">نام فایل</span>
+              <span class="home-download-card__file-name" id="home-download-filename">—</span>
+            </div>
+            <button type="button" class="home-download-card__action" id="btn-home-download-audio">
+              <span class="home-download-card__action-icon app-icon app-icon--sm" data-icon="download" aria-hidden="true"></span>
+              <span class="home-download-card__action-text" id="home-download-action-text">دریافت فایل صوتی</span>
+            </button>
+          </section>
+
           <div class="story-section" id="story-interactions-section" hidden>
             <h3>لحظه‌های تعاملی</h3>
             <ul id="story-interactions" class="story-list"></ul>

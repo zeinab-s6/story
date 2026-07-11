@@ -1542,21 +1542,41 @@ body.app-shell .history-card .history-download.btn.btn--icon.btn--sm:hover:not(:
 
 .history-card .history-restore.btn,
 body.app-shell .history-card .history-restore.btn {
-  min-height: auto;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  background: rgba(219, 39, 119, 0.08);
   box-shadow: none;
-  color: var(--text);
-  font-weight: 600;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .history-card .history-restore.btn:hover:not(:disabled),
 body.app-shell .history-card .history-restore.btn:hover:not(:disabled) {
-  border: none;
-  background: transparent;
-  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(219, 39, 119, 0.14);
+  color: var(--accent-2);
   transform: none;
+}
+
+.history-card .history-restore.btn:disabled,
+body.app-shell .history-card .history-restore.btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.history-card .history-play--playing.btn.btn--icon.btn--sm,
+body.app-shell .history-card .history-play--playing.btn.btn--icon.btn--sm {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.history-card .history-play--loading.btn.btn--icon.btn--sm,
+body.app-shell .history-card .history-play--loading.btn.btn--icon.btn--sm {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .drawer__footer {
@@ -2694,26 +2714,15 @@ body.app-shell[data-mobile-tab="home"] .center-card--has-story {
   min-height: 0;
 }
 
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .story-result {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-result {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .story-cover {
-  order: 0;
-}
-
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .audio-player-wrap {
-  order: 1;
-  margin-top: 0;
-}
-
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .story-section--highlight {
-  order: 2;
-}
-
-body.app-shell[data-mobile-tab="home"] .center-card--has-audio .story-section:not(.story-section--highlight) {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-cover,
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-section:not(.story-section--highlight),
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .audio-player-wrap {
   display: none;
 }
 
@@ -2721,18 +2730,15 @@ body[data-mobile-tab="home"] .center-card--has-story .center-meta {
   display: none;
 }
 
-body[data-mobile-tab="home"] .center-card--has-audio .story-result {
+body[data-mobile-tab="home"] .center-card--has-story .story-result {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-body[data-mobile-tab="home"] .center-card--has-audio .audio-player-wrap {
-  order: 1;
-  margin-top: 0;
-}
-
-body[data-mobile-tab="home"] .center-card--has-audio .story-section:not(.story-section--highlight) {
+body[data-mobile-tab="home"] .center-card--has-story .story-cover,
+body[data-mobile-tab="home"] .center-card--has-story .story-section:not(.story-section--highlight),
+body[data-mobile-tab="home"] .center-card--has-story .audio-player-wrap {
   display: none;
 }
 
@@ -3069,6 +3075,15 @@ body.app-shell.create-modal-open .bottom-nav {
   animation: mobileScreenIn 0.35s ease;
 }
 
+.story-result .home-play-card {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.story-result .home-download-card {
+  margin-top: 0;
+}
+
 .home-play-card__main {
   display: flex;
   align-items: center;
@@ -3236,10 +3251,12 @@ body.app-shell.create-modal-open .bottom-nav {
   color: #fff;
 }
 
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .home-download-card:not([hidden]),
 body.app-shell[data-mobile-tab="home"] .center-card--has-audio .home-download-card:not([hidden]) {
   display: flex;
 }
 
+body[data-mobile-tab="home"] .center-card--has-story .home-download-card:not([hidden]),
 body[data-mobile-tab="home"] .center-card--has-audio .home-download-card:not([hidden]) {
   display: flex;
 }
@@ -3351,11 +3368,13 @@ body[data-mobile-tab="home"] .center-card--has-audio .home-download-card:not([hi
   min-width: 2.5rem;
 }
 
-body.app-shell[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]) {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]),
+body.app-shell[data-mobile-tab="home"] .center-card--has-audio .home-play-card:not([hidden]) {
   display: flex;
 }
 
-body[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]) {
+body[data-mobile-tab="home"] .center-card--has-story .home-play-card:not([hidden]),
+body[data-mobile-tab="home"] .center-card--has-audio .home-play-card:not([hidden]) {
   display: flex;
 }
 
