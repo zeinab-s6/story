@@ -2693,7 +2693,10 @@ body.app-shell[data-mobile-tab="home"] .home-footer:not([hidden]) {
   display: block;
 }
 
-/* Home tab: show created story + audio prominently */
+body.app-init-pending.app-shell[data-mobile-tab="home"] .panel--center .center-card:not(.center-card--has-story) {
+  min-height: 42dvh;
+}
+
 body.app-shell[data-mobile-tab="home"] .center-card--has-story .center-meta {
   display: none;
 }

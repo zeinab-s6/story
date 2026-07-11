@@ -112,6 +112,7 @@
   };
 
   let mobileTab = "home";
+  let prevMobileTab = mobileTab;
   let audioElement = null;
   let storyAudioBlobUrl = null;
   let audioHydrationToken = 0;
@@ -155,20 +156,31 @@
   }
 
   function setMobileTab(tab) {
-    mobileTab = tab || "home";
-    if (mobileTab === "stories") mobileTab = "home";
+    var nextTab = tab || "home";
+    if (nextTab === "stories") nextTab = "home";
+    var tabChanged = nextTab !== mobileTab;
+    prevMobileTab = mobileTab;
+    mobileTab = nextTab;
     if (!state.isGeneratingStory && !state.isGeneratingAudio) {
       resetCreateFlowState();
     }
     if (isMobileLayout()) {
       document.body.setAttribute("data-mobile-tab", mobileTab);
-      if (window.scrollY > 0) {
+      if (tabChanged && window.scrollY > 0) {
         window.scrollTo(0, 0);
       }
     }
     $$(".bottom-nav__item[data-mobile-tab]").forEach(function (item) {
       item.classList.toggle("bottom-nav__item--active", item.dataset.mobileTab === mobileTab);
     });
+    if (mobileTab === "voice") {
+      renderVoiceCards($("#voice-search") && $("#voice-search").value);
+      syncVoiceTaglines();
+      var voiceLibrary = $("#voice-library");
+      if (voiceLibrary && window.StorytellingIcons) {
+        window.StorytellingIcons.injectAll(voiceLibrary);
+      }
+    }
     setupStoryCreateScrollReveal();
   }
 
@@ -371,7 +383,11 @@
   }
 
   function shouldShowHomePlayCard() {
-    return hasStoryAudioUrlOnly();
+    return !!(state.storyResult && (hasStoryAudioUrlOnly() || state.storyId));
+  }
+
+  function isHomeAudioPending() {
+    return !!(state.storyResult && state.storyId && !ensureStoryAudioUrl());
   }
 
   function updateHomePlayCard() {
@@ -394,10 +410,16 @@
     var s = state.storyResult;
     if (titleEl) titleEl.textContent = s.title || "قصه آماده است";
     if (metaEl) {
-      metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
+      if (isHomeAudioPending()) {
+        metaEl.textContent = "در حال آماده‌سازی صدای قصه...";
+      } else if (!isStoryAudioHydrated() && ensureStoryAudioUrl()) {
+        metaEl.textContent = "در حال بارگذاری فایل صوتی...";
+      } else {
+        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
+      }
     }
     if (playBtn) {
-      playBtn.disabled = state.isGeneratingAudio || !isStoryAudioHydrated();
+      playBtn.disabled = state.isGeneratingAudio || isHomeAudioPending() || !isStoryAudioHydrated();
       playBtn.classList.toggle("home-play-card__play--playing", state.isPlaying);
       playBtn.setAttribute("aria-label", state.isPlaying ? "توقف قصه" : "پخش قصه");
     }
@@ -413,9 +435,10 @@
     if (!section) return;
 
     var canDownload = hasStoryAudioAvailable();
-    section.hidden = !canDownload;
+    var showDownload = hasStoryAudioUrlOnly() || (state.storyResult && state.storyId);
+    section.hidden = !showDownload;
 
-    if (!canDownload) return;
+    if (!showDownload) return;
 
     var filename = getAudioDownloadFilename();
     var filenameEl = $("#home-download-filename");
@@ -424,10 +447,18 @@
 
     if (filenameEl) filenameEl.textContent = filename;
     if (actionText) {
-      actionText.textContent = state.isDownloading ? "در حال آماده‌سازی..." : "دریافت فایل صوتی";
+      if (state.isDownloading) {
+        actionText.textContent = "در حال آماده‌سازی...";
+      } else if (!canDownload) {
+        actionText.textContent = isHomeAudioPending()
+          ? "در حال آماده‌سازی..."
+          : "در حال بارگذاری فایل صوتی...";
+      } else {
+        actionText.textContent = "دریافت فایل صوتی";
+      }
     }
     if (actionBtn) {
-      actionBtn.disabled = state.isGeneratingAudio || state.isDownloading;
+      actionBtn.disabled = !canDownload || state.isGeneratingAudio || state.isDownloading || isHomeAudioPending();
       actionBtn.setAttribute("aria-busy", state.isDownloading ? "true" : "false");
     }
 
@@ -1072,10 +1103,6 @@
     scheduleRevokeObjectUrl(blobUrl);
   }
 
-  function getVoiceById(voiceId) {
-    return getVoices().find(function (v) { return v.id === voiceId; }) || null;
-  }
-
   function updateVoiceCardPlayButtons() {
     var container = $("#voice-library");
     if (!container) return;
@@ -1587,16 +1614,26 @@
     return OPENAI_VOICES;
   }
 
-  function getSelectedVoice() {
-    var voices = getVoices();
-    var found = voices.find(function (v) { return v.id === state.selectedVoiceId; });
+  function getAllVoices() {
+    return OPENAI_VOICES.concat(VOICES);
+  }
+
+  function getVoiceById(voiceId) {
+    if (!voiceId) return null;
+    var found = getVoices().find(function (v) { return v.id === voiceId; });
     if (found) return found;
-    var legacyId = LEGACY_VOICE_MAP[state.selectedVoiceId];
-    if (legacyId) {
-      found = voices.find(function (v) { return v.id === legacyId; });
-      if (found) return found;
-    }
-    return voices[0];
+    found = getAllVoices().find(function (v) { return v.id === voiceId; });
+    if (found) return found;
+    var legacyId = LEGACY_VOICE_MAP[voiceId];
+    if (!legacyId) return null;
+    return getAllVoices().find(function (v) { return v.id === legacyId; }) || null;
+  }
+
+  function getSelectedVoice() {
+    var found = getVoiceById(state.selectedVoiceId);
+    if (found) return found;
+    var voices = getVoices();
+    return voices[0] || getAllVoices()[0];
   }
 
   function formatPersianDate(iso) {
@@ -1764,7 +1801,7 @@
     var centerCard = document.querySelector(".panel--center .center-card");
     if (!centerCard) return;
     centerCard.classList.toggle("center-card--has-story", !!state.storyResult);
-    centerCard.classList.toggle("center-card--has-audio", !!(state.storyResult && hasStoryAudioUrlOnly()));
+    centerCard.classList.toggle("center-card--has-audio", !!(state.storyResult && (hasStoryAudioUrlOnly() || state.storyId)));
   }
 
   function startCreateAudioProgress() {
@@ -2205,11 +2242,27 @@
   }
 
   async function restoreHomeStoryForAccount() {
-    if (state.storyResult && state.storyId) {
-      if (!state.audioFullUrl) {
-        await refreshStoryAudioFromServer(state.storyId);
+    if (getCurrentUserId()) {
+      loadLastStory();
+
+      if (state.history.length) {
+        var latest = state.history[0];
+        var shouldPreferHistory = !state.storyResult
+          || Number(state.storyId) !== Number(latest.storyId)
+          || (!state.audioFullUrl && !!latest.audioUrl);
+        if (shouldPreferHistory) {
+          await restoreHistoryItem(latest, { silent: true });
+        }
       }
-      return true;
+
+      if (state.storyResult && state.storyId) {
+        if (!state.audioFullUrl) {
+          await refreshStoryAudioFromServer(state.storyId);
+        }
+        return true;
+      }
+
+      return restoreLastStoryFromServer();
     }
 
     loadLastStory();
@@ -2236,6 +2289,10 @@
       await restoreHomeStoryForAccount();
       await syncStoryAudioFromServer({ skipRestore: true });
 
+      if (getCurrentUserId() && state.storyId && !state.audioFullUrl) {
+        await refreshStoryAudioFromServer(state.storyId);
+      }
+
       if (state.audioFullUrl) {
         try {
           await hydrateStoryAudioPlayer();
@@ -2246,11 +2303,28 @@
 
       renderStoryCard();
       if (!state.storyResult) updateHero(null);
+      updateSummaries();
+      renderVoiceCards($("#voice-search") && $("#voice-search").value);
       updatePrimaryButton();
       updateDownloadControls();
       updateHomeStoryCta();
       updateCenterCardState();
       updateHomePlayCard();
+
+      if (isHomeAudioPending()) {
+        refreshStoryAudioFromServer(state.storyId)
+          .then(function (loaded) {
+            if (!loaded) return null;
+            saveLastStory();
+            renderAudioPlayer();
+            return hydrateStoryAudioPlayer();
+          })
+          .then(function () {
+            updateCenterCardState();
+            updateHomePlayCard();
+          })
+          .catch(function () { /* ignore background refresh errors */ });
+      }
     })().finally(function () {
       storyRestorePromise = null;
     });
@@ -2268,10 +2342,7 @@
       audioUrl = normalizeStoryAudioUrlForStorage(record.latestAudio.audioUrl) || record.latestAudio.audioUrl;
     }
 
-    var voice = null;
-    if (voiceId) {
-      voice = getVoices().find(function (v) { return v.id === voiceId; });
-    }
+    var voice = voiceId ? getVoiceById(voiceId) : null;
 
     return {
       storyId: record.id,
@@ -3044,6 +3115,7 @@
     } catch (e) {
       state.voiceMode = null;
       renderVoiceMode();
+      renderVoiceCards($("#voice-search") && $("#voice-search").value);
     }
   }
 
@@ -3290,45 +3362,54 @@
   }
 
   async function init() {
-    var hadLeakedStorage = prepareUserScopedStorage();
-    getSessionId();
-    if (hadLeakedStorage) resetStoryDisplayToEmpty();
-    var savedChildName = loadSavedChildName();
-    applyChildNameToForm(savedChildName);
+    document.body.classList.add("app-init-pending");
+    try {
+      var hadLeakedStorage = prepareUserScopedStorage();
+      getSessionId();
+      if (hadLeakedStorage) {
+        resetStoryDisplayToEmpty();
+      } else {
+        loadLastStory();
+      }
+      var savedChildName = loadSavedChildName();
+      applyChildNameToForm(savedChildName);
 
-    window.__lalaByeSyncChildDisplay = syncChildDisplay;
+      window.__lalaByeSyncChildDisplay = syncChildDisplay;
 
-    if (window.VoicePlayer) {
-      window.VoicePlayer.setOnStateChange(syncPlayingState);
+      if (window.VoicePlayer) {
+        window.VoicePlayer.setOnStateChange(syncPlayingState);
+      }
+      if (window.StorytellingAuth) {
+        window.StorytellingAuth.renderUserAvatar();
+        window.StorytellingAuth.bindProfileMenu();
+        syncChildDisplay();
+        syncProfileAvatarPicker();
+        syncUserFromServer();
+      }
+      renderGoalChips();
+      renderSliders();
+      bindEvents();
+      await fetchVoiceMode();
+      await syncHistoryFromServer();
+      await restoreUserStoryState();
+      if (!state.storyResult) updateHero(null);
+      updateSummaries();
+      updateCharCount();
+      updatePrimaryButton();
+      updateDownloadControls();
+      updateHomeStoryCta();
+      if (window.StorytellingIcons) window.StorytellingIcons.injectAll(document);
+      bindStoryAudioPlaybackEvents();
+      syncVoiceTaglines();
+      renderVoiceCards();
+      if (isMobileLayout()) {
+        document.body.setAttribute("data-mobile-tab", mobileTab);
+      }
+      setupStoryCreateScrollReveal();
+      appInitDone = true;
+    } finally {
+      document.body.classList.remove("app-init-pending");
     }
-    if (window.StorytellingAuth) {
-      window.StorytellingAuth.renderUserAvatar();
-      window.StorytellingAuth.bindProfileMenu();
-      syncChildDisplay();
-      syncProfileAvatarPicker();
-      syncUserFromServer();
-    }
-    renderGoalChips();
-    renderSliders();
-    bindEvents();
-    await fetchVoiceMode();
-    await syncHistoryFromServer();
-    await restoreUserStoryState();
-    if (!state.storyResult) updateHero(null);
-    updateSummaries();
-    updateCharCount();
-    updatePrimaryButton();
-    updateDownloadControls();
-    updateHomeStoryCta();
-    if (window.StorytellingIcons) window.StorytellingIcons.injectAll(document);
-    bindStoryAudioPlaybackEvents();
-    syncVoiceTaglines();
-    renderVoiceCards();
-    if (isMobileLayout()) {
-      document.body.setAttribute("data-mobile-tab", mobileTab);
-    }
-    setupStoryCreateScrollReveal();
-    appInitDone = true;
   }
 
   if (document.readyState === "loading") {
