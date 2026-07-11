@@ -1543,21 +1543,10 @@ body.app-shell .history-card .history-download.btn.btn--icon.btn--sm:hover:not(:
 .history-card .history-restore.btn,
 body.app-shell .history-card .history-restore.btn {
   min-height: 36px;
-  padding: 6px 14px;
-  border: 1px solid var(--accent);
-  background: rgba(219, 39, 119, 0.08);
-  box-shadow: none;
-  color: var(--accent);
+  min-width: 88px;
+  padding: 6px 16px;
   font-weight: 700;
   cursor: pointer;
-}
-
-.history-card .history-restore.btn:hover:not(:disabled),
-body.app-shell .history-card .history-restore.btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: rgba(219, 39, 119, 0.14);
-  color: var(--accent-2);
-  transform: none;
 }
 
 .history-card .history-restore.btn:disabled,
@@ -1817,10 +1806,6 @@ body.app-shell[data-mobile-tab="story"] .card--voice-lib {
 body.app-shell[data-mobile-tab="voice"] .panel--left,
 body.app-shell[data-mobile-tab="voice"] .panel--right {
   display: flex !important;
-}
-
-body.app-shell[data-mobile-tab="voice"] .panel--right {
-  order: -1;
 }
 
 body.app-shell[data-mobile-tab="voice"] .card--story-setup {
@@ -2099,10 +2084,6 @@ body.app-shell .chip {
   body[data-mobile-tab="voice"] .panel--left,
   body[data-mobile-tab="voice"] .panel--right {
     display: flex !important;
-  }
-
-  body[data-mobile-tab="voice"] .panel--right {
-    order: -1;
   }
 
   body[data-mobile-tab="voice"] .card--story-setup {
@@ -2763,8 +2744,11 @@ body[data-mobile-tab="home"] .center-card--has-story .audio-player-wrap {
   align-self: flex-start;
 }
 
-.stories-clear-btn[hidden] {
-  display: none !important;
+.stories-clear-btn:disabled,
+#btn-clear-history:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .story-create-actions {
@@ -3122,6 +3106,47 @@ body.app-shell.create-modal-open .bottom-nav {
 
 .home-play-card__play--playing {
   background: linear-gradient(135deg, #BE185D, var(--accent));
+}
+
+.home-play-card__download {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  padding: 0;
+  line-height: 0;
+}
+
+.home-play-card__download:hover:not(:disabled) {
+  transform: scale(1.03);
+  background: rgba(219, 39, 119, 0.06);
+  box-shadow: 0 4px 12px rgba(219, 39, 119, 0.18);
+}
+
+.home-play-card__download:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.home-play-card__download:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.home-play-card__download--loading {
+  opacity: 0.6;
+}
+
+.home-play-card__download-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .home-play-card__play-icon {

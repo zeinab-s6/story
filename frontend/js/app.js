@@ -425,7 +425,7 @@
       } else if (!isStoryAudioHydrated()) {
         metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
       } else {
-        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
+        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa + " · برای آفلاین دانلود کن";
       }
     }
     if (playBtn) {
@@ -1027,10 +1027,19 @@
     var canUseAudio = hasStoryAudioAvailable() || !!state.storyId;
     var disabled = !canUseAudio || state.isGeneratingAudio || state.isDownloading;
     var inlineBtn = $("#btn-download-inline");
+    var homeDownloadBtn = $("#btn-home-download");
     var regenBtn = $("#btn-regenerate-audio");
     if (inlineBtn) {
       inlineBtn.disabled = disabled;
       inlineBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
+    }
+    if (homeDownloadBtn) {
+      homeDownloadBtn.disabled = disabled;
+      homeDownloadBtn.setAttribute(
+        "aria-label",
+        state.isDownloading ? "در حال دانلود..." : "دانلود برای آفلاین"
+      );
+      homeDownloadBtn.classList.toggle("home-play-card__download--loading", state.isDownloading);
     }
     if (regenBtn) {
       regenBtn.hidden = !state.storyResult;
@@ -2421,7 +2430,6 @@
 
   function createHistoryCard(item, options) {
     options = options || {};
-    var canAccessAudio = !!(item.audioUrl || item.storyId || !useApiPlayback());
     var card = document.createElement("article");
     card.className = "history-card";
     card.dataset.storyId = String(item.storyId || "");
@@ -2434,24 +2442,8 @@
         '<time class="history-card__date">' + formatPersianDate(item.savedAt) + '</time>' +
       '</div>' +
       '<div class="history-card__actions">' +
-        (canAccessAudio ? '<button type="button" class="btn btn--ghost btn--icon btn--sm history-play" aria-label="پخش">' + (window.StorytellingIcons ? window.StorytellingIcons.render("play", "app-icon--sm") : "") + '</button>' : '') +
-        (canAccessAudio ? '<button type="button" class="btn btn--ghost btn--icon btn--sm history-download" aria-label="دانلود">' + (window.StorytellingIcons ? window.StorytellingIcons.render("download", "app-icon--sm") : "") + '</button>' : '') +
-        '<button type="button" class="btn btn--secondary btn--sm history-restore">بازیابی</button>' +
+        '<button type="button" class="btn btn--primary btn--sm history-restore">بازیابی</button>' +
       '</div>';
-    var playBtn = card.querySelector(".history-play");
-    if (playBtn) {
-      playBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        playHistoryItemInline(item, playBtn);
-      });
-    }
-    var downloadBtn = card.querySelector(".history-download");
-    if (downloadBtn) {
-      downloadBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        downloadHistoryItemInline(item, downloadBtn);
-      });
-    }
     var restoreBtn = card.querySelector(".history-restore");
     restoreBtn.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -2460,6 +2452,10 @@
         if (!restored) return;
         if (options.closeDrawer) closeHistoryDrawer();
         if (isMobileLayout()) setMobileTab("home");
+        var homeCard = $("#home-play-card");
+        if (homeCard && !homeCard.hidden) {
+          homeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
       }).finally(function () {
         restoreBtn.disabled = false;
       });
@@ -2467,23 +2463,30 @@
     return card;
   }
 
+  function updateClearHistoryButtons() {
+    var hasHistory = state.history.length > 0;
+    var clearStories = $("#btn-clear-stories");
+    var clearDrawer = $("#btn-clear-history");
+    if (clearStories) clearStories.disabled = !hasHistory;
+    if (clearDrawer) clearDrawer.disabled = !hasHistory;
+  }
+
   function renderStoriesPanel() {
     var list = $("#stories-list");
     var empty = $("#stories-empty");
-    var clearBtn = $("#btn-clear-stories");
     if (!list) return;
     list.innerHTML = "";
     if (!state.history.length) {
       if (empty) empty.hidden = false;
-      if (clearBtn) clearBtn.hidden = true;
+      updateClearHistoryButtons();
       return;
     }
     if (empty) empty.hidden = true;
-    if (clearBtn) clearBtn.hidden = false;
     state.history.forEach(function (item) {
       list.appendChild(createHistoryCard(item));
     });
     if (window.StorytellingIcons) window.StorytellingIcons.injectAll(list);
+    updateClearHistoryButtons();
   }
 
   function renderHistory() {
@@ -2502,6 +2505,16 @@
     });
     if (window.StorytellingIcons) window.StorytellingIcons.injectAll(list);
     renderStoriesPanel();
+    updateClearHistoryButtons();
+  }
+
+  function resetStoryAudioPlaybackPosition() {
+    syncPlayingState(false);
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+    }
+    resetHomePlayTimeline();
   }
 
   async function restoreHistoryItem(item, options) {
@@ -2558,6 +2571,8 @@
       }
     }
 
+    resetStoryAudioPlaybackPosition();
+
     renderVoiceCards($("#voice-search") && $("#voice-search").value);
     updateSummaries();
     updatePrimaryButton();
@@ -2593,11 +2608,29 @@
   }
 
   function clearHistory() {
+    if (!state.history.length) return;
+    if (!window.confirm("آیا مطمئنی که می‌خواهی همه قصه‌های لیست را پاک کنی؟")) return;
+
+    stopListAudioPlayback();
     state.history = [];
     writeUserStorage("history", null);
     clearActiveStory();
+    revokeStoryAudioBlobUrl();
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.removeAttribute("src");
+      audioElement.load();
+    }
+    renderStoryCard();
+    renderAudioPlayer();
+    renderHistory();
+    updateSummaries();
+    updatePrimaryButton();
+    updateHomeStoryCta();
+    updateHomePlayCard();
+    updateCenterCardState();
     closeHistoryDrawer();
-    window.location.reload();
+    showToast("لیست قصه‌ها پاک شد.", "success");
   }
 
   function openHistoryDrawer() {
@@ -3245,6 +3278,11 @@
         showError(formatApiError(err, "پخش صدا ناموفق بود."));
         updateHomePlayCard();
       });
+    });
+
+    $("#btn-home-download") && $("#btn-home-download").addEventListener("click", function () {
+      if (!shouldShowHomePlayCard()) return;
+      handleDownload();
     });
 
     bindHomePlayTimelineControls();
