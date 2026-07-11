@@ -64,7 +64,12 @@
       setLoading(btn, true);
       try {
         var result = await window.StorytellingAPI.login(email, password);
-        window.StorytellingAuth.saveSession(result.token, result.user);
+        try {
+          window.StorytellingAuth.saveSession(result.token, result.user);
+        } catch (sessionErr) {
+          showError(sessionErr.message || "ذخیره ورود در دستگاه ممکن نیست.");
+          return;
+        }
         redirectAfterAuth(result.user);
       } catch (err) {
         var msg = "ورود ناموفق بود.";
@@ -102,7 +107,12 @@
       setLoading(btn, true);
       try {
         var result = await window.StorytellingAPI.register(email, password, name);
-        window.StorytellingAuth.saveSession(result.token, result.user);
+        try {
+          window.StorytellingAuth.saveSession(result.token, result.user);
+        } catch (sessionErr) {
+          showError(sessionErr.message || "ذخیره ورود در دستگاه ممکن نیست.");
+          return;
+        }
         redirectAfterAuth(result.user);
       } catch (err) {
         var msg = "ثبت‌نام ناموفق بود.";

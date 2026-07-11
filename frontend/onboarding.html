@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#FAF5F8">
   <title>انتخاب فرزند | lalaBye</title>
   <link rel="icon" href="images/logo-loginpage.png" type="image/png">
@@ -44,7 +46,7 @@
       </div>
 
       <div class="gender-picker" role="radiogroup" aria-label="جنسیت و آواتار فرزند">
-        <label class="gender-card">
+        <label class="gender-card" tabindex="0">
           <input type="radio" name="childGender" value="boy" required>
           <span class="gender-card__inner">
             <span class="avatar-ring avatar-ring--sm">
@@ -53,7 +55,7 @@
             <span class="gender-card__label">پسر</span>
           </span>
         </label>
-        <label class="gender-card">
+        <label class="gender-card" tabindex="0">
           <input type="radio" name="childGender" value="girl" required>
           <span class="gender-card__inner">
             <span class="avatar-ring avatar-ring--sm">
@@ -66,7 +68,9 @@
 
       <p class="onboarding-error" id="onboarding-error" hidden role="alert"></p>
 
-      <button type="submit" class="btn btn--primary btn--full onboarding-submit" id="onboarding-submit" disabled>
+      <p class="onboarding-submit-hint" id="onboarding-submit-hint">برای فعال شدن دکمه، اول «پسر» یا «دختر» را انتخاب کن.</p>
+
+      <button type="submit" class="btn btn--primary btn--full onboarding-submit" id="onboarding-submit" disabled aria-describedby="onboarding-submit-hint">
         ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>
       </button>
     </form>

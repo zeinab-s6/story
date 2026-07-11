@@ -3484,29 +3484,29 @@ body[data-mobile-tab="home"] .center-card--has-audio .audio-player-wrap {
 html.onboarding-html {
   height: 100%;
   height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: none;
 }
 
 /* ---- Child Onboarding ---- */
 body.onboarding-page {
-  position: fixed;
-  inset: 0;
+  position: relative;
   width: 100%;
   padding: 0;
   margin: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  height: 100dvh;
-  max-height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: none;
   padding:
     max(12px, env(safe-area-inset-top))
     16px
-    max(12px, env(safe-area-inset-bottom));
+    max(16px, env(safe-area-inset-bottom));
 }
 
 .onboarding-shell {
@@ -3635,11 +3635,19 @@ body.onboarding-page {
 
 .gender-card {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  min-height: 44px;
 }
 
 .gender-card input {
   position: absolute;
+  width: 1px;
+  height: 1px;
   opacity: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
   pointer-events: none;
 }
 
@@ -3652,7 +3660,8 @@ body.onboarding-page {
   border-radius: var(--radius-lg);
   border: 1.5px solid var(--glass-border);
   background: var(--surface);
-  transition: border-color var(--transition), background var(--transition);
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+  min-height: 44px;
 }
 
 .gender-card__label {
@@ -3660,11 +3669,14 @@ body.onboarding-page {
   font-weight: 600;
 }
 
+.gender-card--selected .gender-card__inner,
 .gender-card input:checked + .gender-card__inner {
   border-color: var(--accent);
   background: rgba(255, 107, 44, 0.04);
+  box-shadow: 0 0 0 2px rgba(219, 39, 119, 0.12);
 }
 
+.gender-card--selected .gender-card__inner .avatar-ring,
 .gender-card input:checked + .gender-card__inner .avatar-ring {
   border-color: rgba(255, 107, 44, 0.35);
 }
@@ -3687,6 +3699,18 @@ body.onboarding-page {
 .onboarding-submit {
   min-height: 48px;
   font-size: 0.95rem;
+}
+
+.onboarding-submit-hint {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1.55;
+}
+
+.onboarding-submit-hint[hidden] {
+  display: none !important;
 }
 
 body.onboarding-page .btn--primary {
@@ -3817,7 +3841,7 @@ body.onboarding-page .btn--primary:disabled {
   border: 1px solid rgba(45, 42, 38, 0.12);
   background: #fff;
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .onboarding-name-group input:focus {

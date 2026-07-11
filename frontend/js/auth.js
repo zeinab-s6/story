@@ -5,13 +5,41 @@
   var USER_KEY = "currentUser";
   var ACTIVE_USER_KEY = "storytelling_active_user_id";
 
+  function readStorage(key) {
+    try {
+      var value = localStorage.getItem(key);
+      if (value != null) return value;
+    } catch (e) { /* ignore */ }
+    try {
+      return sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeStorage(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      throw new Error("ذخیره نشست در دستگاه ممکن نیست. حافظه مرورگر را بررسی کن.");
+    }
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (e) { /* session mirror optional */ }
+  }
+
+  function removeStorage(key) {
+    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    try { sessionStorage.removeItem(key); } catch (e) { /* ignore */ }
+  }
+
   function getToken() {
-    return localStorage.getItem(TOKEN_KEY);
+    return readStorage(TOKEN_KEY);
   }
 
   function getUser() {
     try {
-      var raw = localStorage.getItem(USER_KEY);
+      var raw = readStorage(USER_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
@@ -23,31 +51,36 @@
       throw new Error("اطلاعات ورود ناقص است.");
     }
     try {
-      localStorage.setItem(TOKEN_KEY, token);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      writeStorage(TOKEN_KEY, token);
+      writeStorage(USER_KEY, JSON.stringify(user));
       if (user.id != null) {
-        localStorage.setItem(ACTIVE_USER_KEY, String(user.id));
+        writeStorage(ACTIVE_USER_KEY, String(user.id));
       }
     } catch (e) {
       throw new Error("ذخیره نشست در دستگاه ممکن نیست. حافظه مرورگر را بررسی کن.");
     }
-    if (localStorage.getItem(TOKEN_KEY) !== token) {
+    if (readStorage(TOKEN_KEY) !== token) {
       throw new Error("ذخیره نشست در دستگاه ممکن نیست.");
     }
   }
 
   function clearSession() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(ACTIVE_USER_KEY);
+    removeStorage(TOKEN_KEY);
+    removeStorage(USER_KEY);
+    removeStorage(ACTIVE_USER_KEY);
+  }
+
+  function hasValidSession() {
+    return !!(getToken() && getUser());
   }
 
   function isLoggedIn() {
-    return !!getToken();
+    return hasValidSession();
   }
 
   function requireAuth() {
-    if (!isLoggedIn()) {
+    if (!hasValidSession()) {
+      clearSession();
       window.location.replace("/login");
       return false;
     }
@@ -55,12 +88,11 @@
   }
 
   function redirectIfLoggedIn() {
-    if (isLoggedIn()) {
-      if (hasChildProfile()) {
-        window.location.replace("/home");
-      } else {
-        window.location.replace("/onboarding");
-      }
+    if (!hasValidSession()) return;
+    if (hasChildProfile()) {
+      window.location.replace("/home");
+    } else {
+      window.location.replace("/onboarding");
     }
   }
 
@@ -84,6 +116,10 @@
   }
 
   function requireChildProfile() {
+    if (!hasValidSession()) {
+      requireAuth();
+      return false;
+    }
     if (!hasChildProfile()) {
       window.location.replace("/onboarding");
       return false;
@@ -135,7 +171,7 @@
 
   function logout() {
     clearSession();
-    window.location.href = "/login";
+    window.location.replace("/login");
   }
 
   function bindProfileMenu() {
@@ -166,6 +202,7 @@
     saveSession,
     clearSession,
     updateUser,
+    hasValidSession,
     isLoggedIn,
     requireAuth,
     requireChildProfile,

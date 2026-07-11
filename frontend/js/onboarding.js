@@ -14,6 +14,7 @@
   var form = document.getElementById("onboarding-form");
   var errorEl = document.getElementById("onboarding-error");
   var submitBtn = document.getElementById("onboarding-submit");
+  var submitHint = document.getElementById("onboarding-submit-hint");
   var previewImg = document.getElementById("onboarding-avatar-preview");
   var previewLabel = document.getElementById("onboarding-preview-label");
   var parentNameEl = document.getElementById("onboarding-parent-name");
@@ -33,22 +34,32 @@
   }
 
   function hasValidLocalSession() {
-    if (!window.StorytellingAuth) return false;
-    var token = window.StorytellingAuth.getToken();
-    var user = window.StorytellingAuth.getUser();
-    return !!(token && user);
+    return !!(window.StorytellingAuth && window.StorytellingAuth.hasValidSession());
+  }
+
+  function getSelectedGenderInput() {
+    return form && form.querySelector('input[name="childGender"]:checked');
+  }
+
+  function syncGenderCardVisuals() {
+    if (!form) return;
+    form.querySelectorAll(".gender-card").forEach(function (card) {
+      var input = card.querySelector('input[name="childGender"]');
+      card.classList.toggle("gender-card--selected", !!(input && input.checked));
+    });
   }
 
   function updateSubmitState() {
-    if (!submitBtn || !form) return;
-    var selected = form.querySelector('input[name="childGender"]:checked');
-    submitBtn.disabled = !selected;
+    var selected = getSelectedGenderInput();
+    if (submitBtn) submitBtn.disabled = !selected;
+    if (submitHint) submitHint.hidden = !!selected;
   }
 
   function setLoading(loading) {
     if (!submitBtn) return;
-    submitBtn.disabled = loading || !form.querySelector('input[name="childGender"]:checked');
+    submitBtn.disabled = loading || !getSelectedGenderInput();
     submitBtn.classList.toggle("btn--loading", loading);
+    if (submitHint) submitHint.hidden = loading || !!getSelectedGenderInput();
     if (loading) {
       submitBtn.textContent = "در حال ذخیره...";
       return;
@@ -61,6 +72,16 @@
     var name = childNameInput && childNameInput.value.trim();
     if (name) return name;
     return LABELS[gender] || "یک گزینه را انتخاب کن";
+  }
+
+  function selectGender(value) {
+    if (!form || !value) return;
+    var input = form.querySelector('input[name="childGender"][value="' + value + '"]');
+    if (!input) return;
+    input.checked = true;
+    showError("");
+    syncGenderCardVisuals();
+    updatePreview(value);
   }
 
   function updatePreview(gender) {
@@ -77,9 +98,37 @@
     }
   }
 
+  function bindGenderCards() {
+    if (!form) return;
+    var lastPickAt = 0;
+    form.querySelectorAll(".gender-card").forEach(function (card) {
+      function onPick() {
+        var now = Date.now();
+        if (now - lastPickAt < 300) return;
+        lastPickAt = now;
+        var input = card.querySelector('input[name="childGender"]');
+        if (!input) return;
+        selectGender(input.value);
+      }
+      card.addEventListener("click", onPick);
+      card.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPick();
+        }
+      });
+    });
+
+    form.querySelectorAll('input[name="childGender"]').forEach(function (input) {
+      input.addEventListener("change", function () {
+        selectGender(input.value);
+      });
+    });
+  }
+
   if (childNameInput) {
     childNameInput.addEventListener("input", function () {
-      var selected = form && form.querySelector('input[name="childGender"]:checked');
+      var selected = getSelectedGenderInput();
       if (selected) updatePreview(selected.value);
       else if (previewLabel) {
         var name = childNameInput.value.trim();
@@ -89,12 +138,7 @@
   }
 
   if (form) {
-    form.querySelectorAll('input[name="childGender"]').forEach(function (input) {
-      input.addEventListener("change", function () {
-        showError("");
-        updatePreview(input.value);
-      });
-    });
+    bindGenderCards();
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -105,9 +149,10 @@
         return;
       }
 
-      var selected = form.querySelector('input[name="childGender"]:checked');
+      var selected = getSelectedGenderInput();
       if (!selected) {
         showError("لطفاً جنسیت فرزند را انتخاب کن.");
+        if (submitHint) submitHint.hidden = false;
         return;
       }
 
@@ -124,7 +169,7 @@
             try { localStorage.setItem("storytelling_child_name", childName); } catch (err) { /* ignore */ }
           }
         }
-        window.location.href = "/home";
+        window.location.replace("/home");
       } catch (err) {
         if (err.status === 401) {
           redirectToLogin();
@@ -143,6 +188,11 @@
     });
   }
 
-  initParentName();
-  updateSubmitState();
+  if (!hasValidLocalSession()) {
+    redirectToLogin();
+  } else {
+    initParentName();
+    syncGenderCardVisuals();
+    updateSubmitState();
+  }
 })();
