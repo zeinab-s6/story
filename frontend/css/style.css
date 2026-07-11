@@ -1509,7 +1509,9 @@ body.app-shell #drawer-close.btn.btn--icon {
 }
 
 .history-card .history-play.btn.btn--icon.btn--sm,
-body.app-shell .history-card .history-play.btn.btn--icon.btn--sm {
+body.app-shell .history-card .history-play.btn.btn--icon.btn--sm,
+.history-card .history-download.btn.btn--icon.btn--sm,
+body.app-shell .history-card .history-download.btn.btn--icon.btn--sm {
   flex: 0 0 36px;
   width: 36px;
   height: 36px;
@@ -1529,7 +1531,9 @@ body.app-shell .history-card .history-play.btn.btn--icon.btn--sm {
 }
 
 .history-card .history-play.btn.btn--icon.btn--sm:hover:not(:disabled),
-body.app-shell .history-card .history-play.btn.btn--icon.btn--sm:hover:not(:disabled) {
+body.app-shell .history-card .history-play.btn.btn--icon.btn--sm:hover:not(:disabled),
+.history-card .history-download.btn.btn--icon.btn--sm:hover:not(:disabled),
+body.app-shell .history-card .history-download.btn.btn--icon.btn--sm:hover:not(:disabled) {
   color: var(--accent-2);
   border-color: var(--accent);
   background: #fff;
@@ -1946,6 +1950,8 @@ body.app-shell .toast-container {
 body.app-shell .bottom-nav {
   display: flex;
   bottom: 0;
+  z-index: 320;
+  pointer-events: auto;
   height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -8px 32px rgba(219, 39, 119, 0.12);
