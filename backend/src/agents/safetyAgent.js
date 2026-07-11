@@ -10,10 +10,7 @@ function storyToText(story) {
     story.title,
     story.parentIntro,
     story.storyText,
-    story.calmingAction,
-    story.followUpQuestion,
     story.safetyNote,
-    ...(story.interactionPoints || []),
   ];
   return parts.filter(Boolean).join(' ').toLowerCase();
 }

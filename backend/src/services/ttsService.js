@@ -30,7 +30,7 @@ function extractStoryTextForNarration(story, combinedText) {
     .filter(Boolean);
 
   const nonStoryParts = new Set(
-    [story?.parentIntro, story?.calmingAction, story?.followUpQuestion]
+    [story?.parentIntro]
       .filter((part) => typeof part === 'string' && part.trim())
       .map((part) => part.trim()),
   );

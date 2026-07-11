@@ -74,9 +74,6 @@ Return JSON only with this exact schema:
   "parentEffort": "low | medium | high",
   "parentIntro": "",
   "storyText": "",
-  "interactionPoints": [],
-  "calmingAction": "",
-  "followUpQuestion": "",
   "safetyNote": ""
 }`;
 }

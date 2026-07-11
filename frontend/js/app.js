@@ -611,7 +611,7 @@
     if (!state.storyResult) return "";
     syncStoryTextFromPreview();
     var s = state.storyResult;
-    return [s.parentIntro, s.storyText, s.calmingAction, s.followUpQuestion]
+    return [s.parentIntro, s.storyText]
       .filter(function (part) { return typeof part === "string" && part.trim(); })
       .join("\n\n");
   }
@@ -1069,6 +1069,9 @@
 
   function syncPlayingState(playing) {
     state.isPlaying = !!playing;
+    if (!playing && !state.loadingVoiceId) {
+      state.playbackVoiceId = null;
+    }
     updatePrimaryButton();
     updateVoiceCardPlayButtons();
     updateHomePlayCard();
@@ -1095,6 +1098,7 @@
     if (window.VoicePlayer) window.VoicePlayer.stop();
     if (audioElement) audioElement.pause();
     stopNativeBackgroundAmbience();
+    state.playbackVoiceId = null;
     syncPlayingState(false);
   }
 
@@ -1275,14 +1279,12 @@
     if (state.loadingVoiceId === voice.id || state.isGeneratingAudio) {
       return Promise.resolve(false);
     }
+    stopListAudioPlayback();
     if (state.isPlaying) {
       stopVoicePlayback();
     }
-    invalidateStoryAudioIfNeeded(voice.id);
-    state.selectedVoiceId = voice.id;
-    state.playbackVoiceId = voice.id;
-    updateSummaries();
     state.loadingVoiceId = voice.id;
+    state.playbackVoiceId = voice.id;
     updateVoiceCardPlayButtons();
     return playVoicePreview(voice).finally(function () {
       state.loadingVoiceId = null;
@@ -1293,21 +1295,21 @@
   function playVoicePreview(voice) {
     var selected = voice || getSelectedVoice();
     state.playbackVoiceId = selected.id;
+
     if (!useApiPlayback()) {
       return playWithVoiceSettings(getVoiceSampleUrl());
     }
-    if (state.storyResult && state.storyId) {
-      if (state.audioFullUrl && state.audioVoiceId === selected.id) {
-        return playGeneratedStoryAudio();
-      }
-      return handleGenerateAudio({ autoPlay: true, voice: selected });
+
+    if (!window.StorytellingAPI) {
+      showError("اتصال به سرور برقرار نیست.");
+      return Promise.resolve(false);
     }
-    var previewText = buildNarrationText();
+
     return window.StorytellingAPI.previewVoice(
       selected.backendVoice,
-      "wav",
-      previewText || undefined,
-      { backgroundAmbience: !!state.advanced.backgroundAmbience },
+      "mp3",
+      undefined,
+      { backgroundAmbience: !!state.advanced.backgroundAmbience }
     )
       .then(function (result) {
         if (!result.success || !result.audio || !result.audio.audioUrl) {
@@ -1325,10 +1327,12 @@
         return window.VoicePlayer.toggle(url, state.sliders, previewOptions)
           .then(function (playing) {
             syncPlayingState(playing);
+            if (playing) state.playbackVoiceId = selected.id;
             return playing;
           });
       })
       .catch(function (e) {
+        syncPlayingState(false);
         showError(formatApiError(e, "پخش صدا ناموفق بود."));
         return false;
       });
@@ -1796,25 +1800,6 @@
     $("#story-title").textContent = s.title || "بدون عنوان";
     $("#story-parent-intro").textContent = s.parentIntro || "—";
     $("#story-text").textContent = s.storyText || "";
-    $("#story-calming").textContent = s.calmingAction || "—";
-    $("#story-question").textContent = s.followUpQuestion || "—";
-
-    var interactionsEl = $("#story-interactions");
-    var interactionsSection = $("#story-interactions-section");
-    var interactionPoints = (s.interactionPoints || []).filter(function (point) {
-      return typeof point === "string" && point.trim();
-    });
-    if (interactionsEl) {
-      interactionsEl.innerHTML = "";
-      interactionPoints.forEach(function (point) {
-        var li = document.createElement("li");
-        li.textContent = point;
-        interactionsEl.appendChild(li);
-      });
-    }
-    if (interactionsSection) {
-      interactionsSection.hidden = interactionPoints.length === 0;
-    }
 
     $("#meta-story-id").textContent = state.storyId ? "#" + state.storyId : "—";
     $("#meta-duration").textContent = (s.durationMinutes || "—") + " دقیقه";
@@ -2503,9 +2488,6 @@
         parentEffort: "low",
         parentIntro: name + " عزیز، بیا با هم یک قصه کوتاه بشنویم.",
         storyText: "روزی روزگاری " + name + " که " + data.interest + " را خیلی دوست داشت، تصمیم گرفت آرام‌تر شود. با هر نفس عمیق، ستاره‌های کوچک در آسمان می‌درخشیدند و قلبش گرم‌تر شد.",
-        interactionPoints: ["با هم نفس عمیق بکشیم.", "ستاره‌های انگشت را بشمار."],
-        calmingAction: "سه نفس آهسته و آرام.",
-        followUpQuestion: "امشب کدام ستاره را دوست داشتی؟",
       },
     };
   }

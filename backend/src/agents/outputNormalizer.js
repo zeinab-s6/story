@@ -11,14 +11,6 @@ function normalizeParentEffort(value) {
   return VALID_PARENT_EFFORT.includes(normalized) ? normalized : 'low';
 }
 
-function normalizeInteractionPoints(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item) => typeof item === 'string')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 export function normalizeStoryOutput(rawStory, input) {
   const ageRange = trimString(rawStory.ageRange) || getAgeRange(input.age);
 
@@ -30,9 +22,6 @@ export function normalizeStoryOutput(rawStory, input) {
     parentEffort: normalizeParentEffort(rawStory.parentEffort),
     parentIntro: trimString(rawStory.parentIntro),
     storyText: trimString(rawStory.storyText),
-    interactionPoints: normalizeInteractionPoints(rawStory.interactionPoints),
-    calmingAction: trimString(rawStory.calmingAction),
-    followUpQuestion: trimString(rawStory.followUpQuestion),
     safetyNote: trimString(rawStory.safetyNote),
   };
 }

@@ -14,9 +14,6 @@ const REQUIRED_STORY_FIELDS = [
   'parentEffort',
   'parentIntro',
   'storyText',
-  'interactionPoints',
-  'calmingAction',
-  'followUpQuestion',
   'safetyNote',
 ];
 
@@ -29,9 +26,6 @@ function pickStoryFields(story) {
     parentEffort: story.parentEffort,
     parentIntro: story.parentIntro,
     storyText: story.storyText,
-    interactionPoints: story.interactionPoints,
-    calmingAction: story.calmingAction,
-    followUpQuestion: story.followUpQuestion,
     safetyNote: story.safetyNote,
   };
 }
@@ -41,9 +35,6 @@ function validateStoryShape(story) {
     if (story[field] === undefined || story[field] === null) {
       return `فیلد "${field}" در قصه تولیدشده وجود ندارد.`;
     }
-  }
-  if (!Array.isArray(story.interactionPoints)) {
-    return 'فیلد interactionPoints باید آرایه باشد.';
   }
   return null;
 }
