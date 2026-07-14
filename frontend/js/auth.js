@@ -138,17 +138,11 @@
 
     var mobileChildWrap = document.getElementById("mobile-profile-child");
     var mobileChildImg = document.getElementById("mobile-child-avatar-img");
-    var mobileChildLabel = document.getElementById("mobile-profile-child-label");
     if (mobileChildWrap && mobileChildImg) {
       if (user && user.childAvatarUrl) {
         mobileChildWrap.hidden = false;
         mobileChildImg.src = user.childAvatarUrl;
         mobileChildImg.alt = "آواتار فرزند";
-        if (mobileChildLabel) {
-          mobileChildLabel.textContent = user.childName
-            ? "یک قصه برای " + user.childName
-            : "مدیریت قصه‌ها و حساب کاربری";
-        }
       } else {
         mobileChildWrap.hidden = true;
       }

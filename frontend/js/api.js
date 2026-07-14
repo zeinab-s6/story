@@ -70,6 +70,7 @@
       var error = new Error(data?.error || data?.hint || "درخواست ناموفق بود.");
       error.status = response.status;
       error.data = data;
+      error.code = data?.code || null;
       throw error;
     }
 
@@ -109,6 +110,15 @@
       method: "PATCH",
       body: JSON.stringify(payload),
     });
+  }
+
+  async function getQuota(deviceIdentity) {
+    var identity = deviceIdentity || window.LalaByeDevice?.getDeviceIdentity?.() || {};
+    var query = ["deviceId=" + encodeURIComponent(identity.deviceId || "")];
+    if (identity.androidId) {
+      query.push("androidId=" + encodeURIComponent(identity.androidId));
+    }
+    return request(apiUrl("/api/stories/quota?" + query.join("&")), { method: "GET" });
   }
 
   async function generateStory(payload, options) {
@@ -169,6 +179,7 @@
     register,
     getMe,
     updateChildProfile,
+    getQuota,
     generateStory,
     generateStoryAudio,
     getVoiceMode,

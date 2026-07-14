@@ -75,6 +75,27 @@ export function validateStoryInput(body) {
     }
   }
 
+  const deviceId = sanitizeString(body.deviceId, 120);
+  if (!deviceId) {
+    errors.push('شناسه دستگاه الزامی است.');
+  }
+
+  let androidId = null;
+  if (body.androidId !== undefined && body.androidId !== null && body.androidId !== '') {
+    androidId = sanitizeString(body.androidId, 120);
+    if (!androidId) {
+      errors.push('شناسه اندروید معتبر نیست.');
+    }
+  }
+
+  let deviceName = null;
+  if (body.deviceName !== undefined && body.deviceName !== null && body.deviceName !== '') {
+    deviceName = sanitizeString(body.deviceName, 120);
+    if (!deviceName) {
+      errors.push('نام دستگاه باید حداکثر ۱۲۰ کاراکتر باشد.');
+    }
+  }
+
   if (errors.length > 0) {
     return { valid: false, errors };
   }
@@ -90,6 +111,34 @@ export function validateStoryInput(body) {
       childName,
       extraContext,
       sessionId,
+      deviceId,
+      androidId,
+      deviceName,
     },
+  };
+}
+
+export function validateQuotaQuery(body) {
+  const errors = [];
+  const deviceId = sanitizeString(body?.deviceId, 120);
+  if (!deviceId) {
+    errors.push('شناسه دستگاه الزامی است.');
+  }
+
+  let androidId = null;
+  if (body?.androidId !== undefined && body?.androidId !== null && body?.androidId !== '') {
+    androidId = sanitizeString(body.androidId, 120);
+    if (!androidId) {
+      errors.push('شناسه اندروید معتبر نیست.');
+    }
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+
+  return {
+    valid: true,
+    data: { deviceId, androidId },
   };
 }

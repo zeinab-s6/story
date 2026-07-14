@@ -109,6 +109,7 @@
     sliders: { speed: 0.85, pitch: 0.9, emotion: 0.4, clarity: 0.9 },
     advanced: { pauseBetweenSentences: 0.5, emphasisLevel: 0.6, backgroundAmbience: false, autoNormalize: true },
     history: [],
+    quota: null,
   };
 
   let mobileTab = "home";
@@ -184,6 +185,10 @@
         window.StorytellingIcons.injectAll(voiceLibrary);
       }
     }
+    if (mobileTab === "profile") {
+      refreshQuotaDisplay();
+    }
+    updateCreateStoryButtonState();
     setupStoryCreateScrollReveal();
   }
 
@@ -1655,7 +1660,76 @@
     if (errorEl) { errorEl.textContent = ""; errorEl.hidden = true; }
   }
 
+  function getDevicePayload() {
+    if (window.LalaByeDevice && typeof window.LalaByeDevice.getDeviceIdentity === "function") {
+      return window.LalaByeDevice.getDeviceIdentity();
+    }
+    return { deviceId: "dev_web_fallback", androidId: null, deviceName: null };
+  }
+
+  function isQuotaBlocked() {
+    var quota = state.quota;
+    if (!quota) return false;
+    return quota.userExceeded === true || quota.deviceExceeded === true;
+  }
+
+  function formatQuotaUsageCount(value) {
+    return String(value == null ? 0 : value).replace(/\d/g, function (digit) {
+      return "۰۱۲۳۴۵۶۷۸۹"[Number(digit)];
+    });
+  }
+
+  function renderQuotaUsage() {
+    var usageEl = $("#mobile-profile-usage");
+    if (!usageEl) return;
+
+    var quota = state.quota;
+    var dailyLimit = quota && quota.dailyLimit != null ? quota.dailyLimit : 2;
+    var used = quota && quota.userUsedToday != null ? quota.userUsedToday : 0;
+
+    if (used >= dailyLimit) {
+      usageEl.textContent = "استفاده امروزت به اتمام رسید!";
+      usageEl.classList.add("mobile-profile-hero__usage--exceeded");
+      return;
+    }
+
+    usageEl.classList.remove("mobile-profile-hero__usage--exceeded");
+    usageEl.textContent =
+      "استفاده امروز: " +
+      formatQuotaUsageCount(used) +
+      " از " +
+      formatQuotaUsageCount(dailyLimit) +
+      " داستان ساخته شده";
+  }
+
+  function updateCreateStoryButtonState() {
+    var btn = $("#btn-create-story");
+    if (!btn) return;
+    var blocked = isQuotaBlocked();
+    btn.disabled = blocked || state.isGeneratingStory;
+    btn.setAttribute("aria-disabled", blocked ? "true" : "false");
+  }
+
+  async function refreshQuotaDisplay() {
+    if (!window.StorytellingAPI || !window.StorytellingAuth || !window.StorytellingAuth.isLoggedIn()) {
+      return;
+    }
+
+    try {
+      var result = await window.StorytellingAPI.getQuota(getDevicePayload());
+      if (result && result.quota) {
+        state.quota = result.quota;
+      }
+    } catch (_err) {
+      /* keep last known quota */
+    }
+
+    renderQuotaUsage();
+    updateCreateStoryButtonState();
+  }
+
   function getFormData() {
+    var device = getDevicePayload();
     return {
       childName: ($("#childName") && $("#childName").value || "").trim(),
       age: Number($("#age") && $("#age").value),
@@ -1665,6 +1739,9 @@
       durationMinutes: Number($("#durationMinutes") && $("#durationMinutes").value),
       extraContext: ($("#extraContext") && $("#extraContext").value || "").trim(),
       sessionId: getSessionId(),
+      deviceId: device.deviceId,
+      androidId: device.androidId || undefined,
+      deviceName: device.deviceName || undefined,
     };
   }
 
@@ -1723,12 +1800,8 @@
   function syncChildDisplay() {
     var name = getEffectiveChildName();
     var nameEl = $("#mobile-profile-name");
-    var tagline = $("#mobile-profile-child-label");
     if (nameEl) nameEl.textContent = name || "کودک";
-    if (!tagline) return;
-    tagline.textContent = name
-      ? "یک قصه برای " + name
-      : "مدیریت قصه‌ها و حساب کاربری";
+    renderQuotaUsage();
   }
 
   function updateHero(story) {
@@ -2690,6 +2763,13 @@
       showError(err);
       return;
     }
+    if (isQuotaBlocked()) {
+      var quotaMsg = state.quota && state.quota.deviceExceeded
+        ? "امروز روی این دستگاه حداکثر ۲ داستان ساخته شده است.\nفردا دوباره می‌توانید داستان جدید بسازید."
+        : "استفاده امروزت به اتمام رسید!\nفردا دوباره می‌توانی داستان جدید بسازی.";
+      showToast(quotaMsg, "error");
+      return;
+    }
     var data = getFormData();
     state.isGeneratingStory = true;
     updatePrimaryButton();
@@ -2712,6 +2792,9 @@
       }
       if (signal.aborted) return;
       if (!result.success) throw new Error(result.error || "ساخت قصه ناموفق بود.");
+      if (result.quota) state.quota = result.quota;
+      renderQuotaUsage();
+      updateCreateStoryButtonState();
       state.storyId = result.storyId;
       state.provider = result.provider;
       state.storyResult = result.story;
@@ -2761,12 +2844,21 @@
         return;
       }
       var msg = "ساخت قصه ناموفق بود. لطفاً دوباره تلاش کن.";
-      if (e.message === "Failed to fetch" || e.name === "TypeError") {
+      if (e.code === "QUOTA_DAILY_EXCEEDED" || e.code === "DEVICE_DAILY_LIMIT_EXCEEDED") {
+        msg = e.message || e.data?.error || msg;
+        if (e.data && e.data.quota) {
+          state.quota = e.data.quota;
+          renderQuotaUsage();
+          updateCreateStoryButtonState();
+        }
+      } else if (e.code === "STORY_GENERATION_FAILED") {
+        msg = e.message || e.data?.error || msg;
+      } else if (e.message === "Failed to fetch" || e.name === "TypeError") {
         msg = "اتصال به سرور برقرار نشد. مطمئن شو بک‌اند روی آدرس درست اجرا شده است.";
       } else if (e.message) {
         msg = e.message;
       }
-      showError(msg);
+      showToast(msg, "error");
     } finally {
       storyGenerationAbort = null;
       state.isGeneratingStory = false;
@@ -2775,6 +2867,7 @@
         setStoryCreateLoading(false);
       }
       updatePrimaryButton();
+      updateCreateStoryButtonState();
     }
   }
 
@@ -3390,12 +3483,14 @@
       renderSliders();
       bindEvents();
       await fetchVoiceMode();
+      await refreshQuotaDisplay();
       await syncHistoryFromServer();
       await restoreUserStoryState();
       if (!state.storyResult) updateHero(null);
       updateSummaries();
       updateCharCount();
       updatePrimaryButton();
+      updateCreateStoryButtonState();
       updateDownloadControls();
       updateHomeStoryCta();
       if (window.StorytellingIcons) window.StorytellingIcons.injectAll(document);

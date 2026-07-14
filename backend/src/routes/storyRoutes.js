@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import { STORY_GOALS } from '../catalog/storyGoals.js';
-import { validateStoryInput } from '../validators/storyInputValidator.js';
+import { validateStoryInput, validateQuotaQuery } from '../validators/storyInputValidator.js';
 import { validateFeedbackInput } from '../validators/feedbackValidator.js';
 import { createStory } from '../agents/storyAgent.js';
 import {
@@ -24,6 +24,15 @@ import { isValidElevenLabsVoice } from '../catalog/elevenLabsVoices.js';
 import { isValidIviraSpeaker } from '../catalog/iviraVoices.js';
 import env from '../config/env.js';
 import { userAuth, optionalUserAuth } from '../middleware/userAuth.js';
+import {
+  QUOTA_ERROR_CODES,
+  QUOTA_MESSAGES,
+  resolveDeviceIdentity,
+  registerDeviceVisit,
+  assertCanGenerateStory,
+  getQuotaStatus,
+  recordStoryGenerationSuccess,
+} from '../services/quotaService.js';
 
 function isValidRequestedVoice(voice) {
   if (voice === undefined || voice === null) {
@@ -64,7 +73,35 @@ router.get('/goals', (_req, res) => {
   res.json({ success: true, goals });
 });
 
-router.post('/generate', optionalUserAuth, async (req, res, next) => {
+router.get('/quota', userAuth, (req, res) => {
+  const validation = validateQuotaQuery({
+    deviceId: req.query.deviceId,
+    androidId: req.query.androidId,
+  });
+
+  if (!validation.valid) {
+    return res.status(400).json({
+      success: false,
+      error: validation.errors[0],
+      ...(env.isDevelopment && { details: validation.errors.join(' | ') }),
+    });
+  }
+
+  const deviceIdentity = resolveDeviceIdentity(validation.data);
+  registerDeviceVisit({
+    userId: req.user.id,
+    ...deviceIdentity,
+  });
+
+  const quota = getQuotaStatus({
+    userId: req.user.id,
+    ...deviceIdentity,
+  });
+
+  return res.json({ success: true, quota });
+});
+
+router.post('/generate', userAuth, async (req, res) => {
   const validation = validateStoryInput(req.body);
 
   if (!validation.valid) {
@@ -75,19 +112,59 @@ router.post('/generate', optionalUserAuth, async (req, res, next) => {
     });
   }
 
+  const deviceIdentity = resolveDeviceIdentity(validation.data);
+  registerDeviceVisit({
+    userId: req.user.id,
+    ...deviceIdentity,
+  });
+
+  const quotaCheck = assertCanGenerateStory({
+    userId: req.user.id,
+    ...deviceIdentity,
+  });
+
+  if (!quotaCheck.allowed) {
+    return res.status(429).json({
+      success: false,
+      code: quotaCheck.code,
+      error: quotaCheck.error,
+      quota: quotaCheck.quota,
+    });
+  }
+
   try {
     const result = await createStory({
       ...validation.data,
-      userId: req.user?.id ?? null,
+      userId: req.user.id,
     });
 
     if (!result.success) {
-      return res.status(422).json(result);
+      return res.status(422).json({
+        success: false,
+        code: QUOTA_ERROR_CODES.STORY_GENERATION_FAILED,
+        error: QUOTA_MESSAGES[QUOTA_ERROR_CODES.STORY_GENERATION_FAILED],
+      });
     }
 
-    return res.status(201).json(result);
+    recordStoryGenerationSuccess({
+      userId: req.user.id,
+      ...deviceIdentity,
+    });
+
+    return res.status(201).json({
+      ...result,
+      quota: getQuotaStatus({
+        userId: req.user.id,
+        ...deviceIdentity,
+      }),
+    });
   } catch (err) {
-    return next(err);
+    return res.status(502).json({
+      success: false,
+      code: QUOTA_ERROR_CODES.STORY_GENERATION_FAILED,
+      error: QUOTA_MESSAGES[QUOTA_ERROR_CODES.STORY_GENERATION_FAILED],
+      ...(env.isDevelopment && { details: err.message }),
+    });
   }
 });
 

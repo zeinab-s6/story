@@ -7,6 +7,7 @@ export function userAuth(req, res, next) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
+      code: 'AUTH_REQUIRED',
       error: 'برای دسترسی باید وارد شوید.',
     });
   }
@@ -17,6 +18,7 @@ export function userAuth(req, res, next) {
   if (!payload?.userId) {
     return res.status(401).json({
       success: false,
+      code: 'AUTH_REQUIRED',
       error: 'نشست شما منقضی شده. دوباره وارد شوید.',
     });
   }
@@ -26,6 +28,7 @@ export function userAuth(req, res, next) {
   if (!user) {
     return res.status(401).json({
       success: false,
+      code: 'AUTH_REQUIRED',
       error: 'کاربر پیدا نشد.',
     });
   }

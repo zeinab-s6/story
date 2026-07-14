@@ -141,6 +141,7 @@ export const env = {
   ADMIN_TOKEN: process.env.ADMIN_TOKEN || '',
   JWT_SECRET: process.env.JWT_SECRET || (isDevelopment ? 'dev-storytelling-jwt-secret-change-me' : ''),
   JWT_EXPIRES_IN_SEC: Number(process.env.JWT_EXPIRES_IN_SEC) || 60 * 60 * 24 * 7,
+  DAILY_STORY_LIMIT: Number(process.env.DAILY_STORY_LIMIT) || 2,
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
 

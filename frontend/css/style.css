@@ -3411,6 +3411,33 @@ body[data-mobile-tab="home"] .center-card--has-audio .audio-player-wrap {
   color: var(--muted);
 }
 
+.mobile-profile-hero__usage {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.mobile-profile-hero__usage--exceeded {
+  color: var(--danger, #c0392b);
+  font-weight: 600;
+}
+
+.story-quota-notice {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(124, 92, 122, 0.08);
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.story-create-actions .btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .mobile-menu {
   padding: 8px;
   display: flex;
