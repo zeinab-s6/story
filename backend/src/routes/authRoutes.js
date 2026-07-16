@@ -13,6 +13,8 @@ import {
 import { userAuth } from '../middleware/userAuth.js';
 import { validateChildProfileInput } from '../validators/childProfileValidator.js';
 import { getChildAvatarUrl } from '../catalog/childAvatars.js';
+import { validateQuotaQuery } from '../validators/storyInputValidator.js';
+import { resolveDeviceIdentity, registerDeviceVisit } from '../services/quotaService.js';
 
 const router = Router();
 
@@ -92,6 +94,22 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/me', userAuth, (req, res) => {
+  const deviceValidation = validateQuotaQuery({
+    deviceId: req.query.deviceId,
+    androidId: req.query.androidId,
+  });
+
+  if (deviceValidation.valid) {
+    const deviceIdentity = resolveDeviceIdentity({
+      ...deviceValidation.data,
+      deviceName: req.query.deviceName,
+    });
+    registerDeviceVisit({
+      userId: req.user.id,
+      ...deviceIdentity,
+    });
+  }
+
   return res.json({
     success: true,
     user: req.user,

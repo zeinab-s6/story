@@ -102,7 +102,19 @@
   }
 
   async function getMe() {
-    return request(apiUrl("/api/auth/me"), { method: "GET" });
+    var identity = window.LalaByeDevice?.getDeviceIdentity?.() || {};
+    var query = [];
+    if (identity.deviceId) {
+      query.push("deviceId=" + encodeURIComponent(identity.deviceId));
+    }
+    if (identity.androidId) {
+      query.push("androidId=" + encodeURIComponent(identity.androidId));
+    }
+    if (identity.deviceName) {
+      query.push("deviceName=" + encodeURIComponent(identity.deviceName));
+    }
+    var qs = query.length ? "?" + query.join("&") : "";
+    return request(apiUrl("/api/auth/me" + qs), { method: "GET" });
   }
 
   async function updateChildProfile(payload) {
