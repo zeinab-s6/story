@@ -1,4 +1,5 @@
 import db from '../db/database.js';
+import fs from 'fs';
 
 const insertStmt = db.prepare(`
   INSERT INTO story_audio (
@@ -93,4 +94,18 @@ export function getStoryAudioByStoryId(storyId) {
 export function getStoryAudioByStoryAndId(storyId, audioId) {
   const row = getByStoryAndIdStmt.get(audioId, storyId);
   return mapRow(row);
+}
+
+export function deleteStoryAudioByStoryId(storyId) {
+  const rows = getByStoryIdStmt.all(storyId);
+  for (const row of rows) {
+    if (row.audio_path && fs.existsSync(row.audio_path)) {
+      try {
+        fs.unlinkSync(row.audio_path);
+      } catch {
+        // ignore missing or locked files
+      }
+    }
+  }
+  db.prepare('DELETE FROM story_audio WHERE story_id = ?').run(storyId);
 }

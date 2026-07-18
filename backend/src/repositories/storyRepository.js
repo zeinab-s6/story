@@ -1,4 +1,5 @@
 import db from '../db/database.js';
+import { deleteStoryAudioByStoryId } from './storyAudioRepository.js';
 
 const insertStoryStmt = db.prepare(`
   INSERT INTO stories (
@@ -103,6 +104,7 @@ export function getStoryById(id) {
 
 export function deleteStoryById(id) {
   const run = db.transaction(() => {
+    deleteStoryAudioByStoryId(id);
     db.prepare('DELETE FROM feedback WHERE story_id = ?').run(id);
     db.prepare('UPDATE usage_logs SET story_id = NULL WHERE story_id = ?').run(id);
     const result = deleteStoryStmt.run(id);

@@ -4,6 +4,7 @@ import {
   countUserSuccessGenerationsToday,
   countDeviceSuccessGenerationsToday,
   recordSuccessfulGeneration,
+  revertStoryGenerationByStoryId,
 } from '../repositories/quotaRepository.js';
 import { upsertUserDevice } from '../repositories/deviceRepository.js';
 
@@ -81,8 +82,18 @@ export function assertCanGenerateStory({ userId, deviceId, androidIdHash }) {
   return { allowed: true, quota };
 }
 
-export function recordStoryGenerationSuccess({ userId, deviceId, androidIdHash }) {
-  return recordSuccessfulGeneration({ userId, deviceId, androidIdHash, creditsUsed: 1 });
+export function recordStoryGenerationSuccess({ userId, deviceId, androidIdHash, storyId = null }) {
+  return recordSuccessfulGeneration({
+    userId,
+    deviceId,
+    androidIdHash,
+    storyId,
+    creditsUsed: 1,
+  });
+}
+
+export function revertStoryGenerationQuota({ storyId, userId }) {
+  return revertStoryGenerationByStoryId(storyId, userId);
 }
 
 export default {
@@ -94,4 +105,5 @@ export default {
   registerDeviceVisit,
   assertCanGenerateStory,
   recordStoryGenerationSuccess,
+  revertStoryGenerationQuota,
 };

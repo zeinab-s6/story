@@ -12,10 +12,11 @@
     lastStory: "storytelling_last_story",
     history: "storytelling_history",
     childName: "storytelling_child_name",
+    quota: "storytelling_quota",
     legacyOwner: "storytelling_legacy_owner_user_id",
   };
 
-  const USER_SCOPED_STORAGE_NAMES = ["sessionId", "lastStory", "history", "childName"];
+  const USER_SCOPED_STORAGE_NAMES = ["sessionId", "lastStory", "history", "childName", "quota"];
 
   const GOAL_LABELS = {
     sleep: "خوابیدن",
@@ -122,6 +123,9 @@
   let createHintTimer = null;
   let createProgressValue = 0;
   let storyGenerationAbort = null;
+  let activeGenerationStoryId = null;
+  let preGenerationStorySnapshot = null;
+  let quotaReady = false;
   let storyCreateScrollObserver = null;
   let homeTimelineSeeking = false;
   let homeTimelineBound = false;
@@ -376,8 +380,86 @@
     });
   }
 
+  function setCancelStoryButtonsDisabled(disabled) {
+    ["#btn-cancel-story", "#btn-cancel-create-modal"].forEach(function (sel) {
+      var btn = $(sel);
+      if (btn) btn.disabled = !!disabled;
+    });
+  }
+
+  function captureStorySnapshot() {
+    if (!state.storyId || !state.storyResult) return null;
+    return {
+      storyId: state.storyId,
+      provider: state.provider,
+      storyResult: state.storyResult,
+      audioResult: state.audioResult,
+      audioFullUrl: state.audioFullUrl,
+      audioVoiceId: state.audioVoiceId,
+    };
+  }
+
+  function restoreStorySnapshot(snapshot) {
+    if (!snapshot) {
+      clearActiveStory();
+      return;
+    }
+    state.storyId = snapshot.storyId;
+    state.provider = snapshot.provider;
+    state.storyResult = snapshot.storyResult;
+    state.audioResult = snapshot.audioResult;
+    state.audioFullUrl = snapshot.audioFullUrl;
+    state.audioVoiceId = snapshot.audioVoiceId;
+    saveLastStory();
+    renderStoryCard();
+    renderAudioPlayer();
+    updateSummaries();
+    updateHomeStoryCta();
+    updateCenterCardState();
+    updatePrimaryButton();
+    updateDownloadControls();
+    updateHomePlayCard();
+  }
+
+  function removeStoryFromHistory(storyId) {
+    if (!storyId) return;
+    var nextHistory = state.history.filter(function (item) {
+      return Number(item.storyId) !== Number(storyId);
+    });
+    if (nextHistory.length === state.history.length) return;
+    state.history = nextHistory;
+    writeUserStorage("history", JSON.stringify(state.history));
+    renderHistory();
+  }
+
+  async function rollbackCancelledGeneration(storyId, previousSnapshot) {
+    if (
+      storyId
+      && !mockFrontendMode
+      && window.StorytellingAPI
+      && typeof window.StorytellingAPI.cancelStoryGeneration === "function"
+    ) {
+      try {
+        var result = await window.StorytellingAPI.cancelStoryGeneration(storyId, getDevicePayload());
+        if (result && result.quota) {
+          applyQuotaState(result.quota);
+        }
+      } catch (_err) {
+        /* best effort rollback */
+      }
+    }
+
+    removeStoryFromHistory(storyId);
+    restoreStorySnapshot(previousSnapshot);
+    updateCenterCardState();
+    updateHomeStoryCta();
+    updateHomePlayCard();
+  }
+
   function cancelStoryGeneration() {
     if ((!state.isGeneratingStory && !state.isGeneratingAudio) || !storyGenerationAbort) return;
+    setCreateHint("در حال توقف ساخت...");
+    setCancelStoryButtonsDisabled(true);
     storyGenerationAbort.abort();
   }
 
@@ -1714,6 +1796,44 @@
     if (errorEl) { errorEl.textContent = ""; errorEl.hidden = true; }
   }
 
+  function getTehranDayKey(date) {
+    date = date || new Date();
+    var tehran = new Date(date.getTime() + (3.5 * 60 * 60 * 1000));
+    var month = tehran.getUTCMonth() + 1;
+    var day = tehran.getUTCDate();
+    return tehran.getUTCFullYear() + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function loadPersistedQuota() {
+    if (!getCurrentUserId()) return;
+    try {
+      var raw = readUserStorage("quota");
+      if (!raw) return;
+      var cached = JSON.parse(raw);
+      if (!cached || !cached.quota || cached.dayKey !== getTehranDayKey()) return;
+      state.quota = cached.quota;
+    } catch (_err) {
+      /* ignore invalid cache */
+    }
+  }
+
+  function persistQuotaSnapshot(quota) {
+    if (!getCurrentUserId() || !quota) return;
+    writeUserStorage("quota", JSON.stringify({
+      dayKey: getTehranDayKey(),
+      quota: quota,
+      cachedAt: new Date().toISOString(),
+    }));
+  }
+
+  function applyQuotaState(quota) {
+    if (!quota) return;
+    state.quota = quota;
+    persistQuotaSnapshot(quota);
+    renderQuotaUsage();
+    updateCreateStoryButtonState();
+  }
+
   function getDevicePayload() {
     if (window.LalaByeDevice && typeof window.LalaByeDevice.getDeviceIdentity === "function") {
       return window.LalaByeDevice.getDeviceIdentity();
@@ -1722,9 +1842,20 @@
   }
 
   function isQuotaBlocked() {
+    if (window.StorytellingAuth && window.StorytellingAuth.isLoggedIn() && !quotaReady) {
+      return true;
+    }
     var quota = state.quota;
     if (!quota) return false;
     return quota.userExceeded === true || quota.deviceExceeded === true;
+  }
+
+  function getQuotaBlockedMessage() {
+    var quota = state.quota;
+    if (quota && quota.deviceExceeded) {
+      return "امروز روی این دستگاه حداکثر ۲ داستان ساخته شده است.\nفردا دوباره می‌توانید داستان جدید بسازید.";
+    }
+    return "استفاده امروزت به اتمام رسید!\nفردا دوباره می‌توانی داستان جدید بسازی.";
   }
 
   function formatQuotaUsageCount(value) {
@@ -1766,20 +1897,25 @@
 
   async function refreshQuotaDisplay() {
     if (!window.StorytellingAPI || !window.StorytellingAuth || !window.StorytellingAuth.isLoggedIn()) {
+      quotaReady = true;
       return;
     }
+
+    quotaReady = false;
+    updateCreateStoryButtonState();
 
     try {
       var result = await window.StorytellingAPI.getQuota(getDevicePayload());
       if (result && result.quota) {
-        state.quota = result.quota;
+        applyQuotaState(result.quota);
       }
     } catch (_err) {
-      /* keep last known quota */
+      /* keep persisted quota if server is unavailable */
+    } finally {
+      quotaReady = true;
+      renderQuotaUsage();
+      updateCreateStoryButtonState();
     }
-
-    renderQuotaUsage();
-    updateCreateStoryButtonState();
   }
 
   function getFormData() {
@@ -2827,17 +2963,24 @@
       showFormValidationError(validation.fieldId, validation.message);
       return;
     }
+    await refreshQuotaDisplay();
     if (isQuotaBlocked()) {
-      var quotaMsg = state.quota && state.quota.deviceExceeded
-        ? "امروز روی این دستگاه حداکثر ۲ داستان ساخته شده است.\nفردا دوباره می‌توانید داستان جدید بسازید."
-        : "استفاده امروزت به اتمام رسید!\nفردا دوباره می‌توانی داستان جدید بسازی.";
+      var quotaMsg = getQuotaBlockedMessage();
+      var quotaErrorEl = $("#form-error");
+      if (quotaErrorEl) {
+        quotaErrorEl.textContent = quotaMsg;
+        quotaErrorEl.hidden = false;
+      }
       showToast(quotaMsg, "error");
       return;
     }
     var data = getFormData();
     state.isGeneratingStory = true;
+    activeGenerationStoryId = null;
+    preGenerationStorySnapshot = captureStorySnapshot();
     updatePrimaryButton();
     setStoryCreateLoading(true);
+    setCancelStoryButtonsDisabled(false);
     var createActions = document.querySelector(".story-create-actions");
     if (createActions && isMobileLayout()) {
       createActions.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -2854,11 +2997,21 @@
       } else {
         result = await window.StorytellingAPI.generateStory(data, { signal: signal });
       }
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
+        return;
+      }
       if (!result.success) throw new Error(result.error || "ساخت قصه ناموفق بود.");
-      if (result.quota) state.quota = result.quota;
-      renderQuotaUsage();
-      updateCreateStoryButtonState();
+      activeGenerationStoryId = result.storyId;
+      if (signal.aborted) {
+        await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
+        return;
+      }
+      if (result.quota) applyQuotaState(result.quota);
+      else {
+        renderQuotaUsage();
+        updateCreateStoryButtonState();
+      }
       state.storyId = result.storyId;
       state.provider = result.provider;
       state.storyResult = result.story;
@@ -2884,13 +3037,19 @@
       completeCreateProgress();
       startCreateAudioProgress();
       var audioReady = await handleGenerateAudio({ autoPlay: false, suppressToast: true, signal: signal });
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
+        return;
+      }
       stopCreateProgress();
       setCreateModalPhase("done");
       updateCreateProgressUI(100);
       setCreateHint(audioReady ? "قصه و صدا آماده‌اند!" : "قصه ساخته شد. صدا در خانه قابل تلاش مجدد است.");
       await delayWithSignal(600, signal);
-      if (signal.aborted) return;
+      if (signal.aborted) {
+        await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
+        return;
+      }
       setStoryCreateLoading(false);
       if (isMobileLayout()) setMobileTab("home");
       updateCenterCardState();
@@ -2904,6 +3063,8 @@
       if (e.name === "AbortError") {
         stopCreateProgress();
         setStoryCreateLoading(false);
+        await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
+        setCreateHint("ساخت قصه متوقف شد.");
         showToast("ساخت قصه متوقف شد.", "info");
         return;
       }
@@ -2911,9 +3072,7 @@
       if (e.code === "QUOTA_DAILY_EXCEEDED" || e.code === "DEVICE_DAILY_LIMIT_EXCEEDED") {
         msg = e.message || e.data?.error || msg;
         if (e.data && e.data.quota) {
-          state.quota = e.data.quota;
-          renderQuotaUsage();
-          updateCreateStoryButtonState();
+          applyQuotaState(e.data.quota);
         }
       } else if (e.code === "STORY_GENERATION_FAILED") {
         msg = e.message || e.data?.error || msg;
@@ -2925,8 +3084,11 @@
       showToast(msg, "error");
     } finally {
       storyGenerationAbort = null;
+      activeGenerationStoryId = null;
+      preGenerationStorySnapshot = null;
       state.isGeneratingStory = false;
       stopCreateProgress();
+      setCancelStoryButtonsDisabled(false);
       if (state.isGeneratingStory === false) {
         setStoryCreateLoading(false);
       }
@@ -3493,6 +3655,7 @@
           if (result.user.childName) applyChildNameToForm(result.user.childName);
           syncChildDisplay();
           syncProfileAvatarPicker();
+          if (result.quota) applyQuotaState(result.quota);
           if (appInitDone) {
             syncHistoryFromServer();
           }
@@ -3534,6 +3697,16 @@
     document.body.classList.add("app-init-pending");
     try {
       var hadLeakedStorage = prepareUserScopedStorage();
+      loadPersistedQuota();
+      if (window.StorytellingAuth && window.StorytellingAuth.isLoggedIn()) {
+        quotaReady = !!state.quota;
+        if (state.quota) {
+          renderQuotaUsage();
+          updateCreateStoryButtonState();
+        }
+      } else {
+        quotaReady = true;
+      }
       getSessionId();
       if (hadLeakedStorage) {
         resetStoryDisplayToEmpty();

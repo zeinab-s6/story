@@ -87,17 +87,30 @@
     return base + path;
   }
 
+  function getAuthDevicePayload() {
+    var identity = window.LalaByeDevice?.getDeviceIdentity?.() || {};
+    return {
+      deviceId: identity.deviceId || "",
+      androidId: identity.androidId || undefined,
+      deviceName: identity.deviceName || undefined,
+    };
+  }
+
   async function login(email, password) {
     return request(apiUrl("/api/auth/login"), {
       method: "POST",
-      body: JSON.stringify({ email: email, password: password }),
+      body: JSON.stringify(Object.assign({ email: email, password: password }, getAuthDevicePayload())),
     });
   }
 
   async function register(email, password, displayName) {
     return request(apiUrl("/api/auth/register"), {
       method: "POST",
-      body: JSON.stringify({ email: email, password: password, displayName: displayName }),
+      body: JSON.stringify(Object.assign({
+        email: email,
+        password: password,
+        displayName: displayName,
+      }, getAuthDevicePayload())),
     });
   }
 
@@ -138,6 +151,17 @@
       method: "POST",
       body: JSON.stringify(payload),
       signal: options && options.signal,
+    });
+  }
+
+  async function cancelStoryGeneration(storyId, deviceIdentity) {
+    var identity = deviceIdentity || window.LalaByeDevice?.getDeviceIdentity?.() || {};
+    return request(apiUrl("/api/stories/" + encodeURIComponent(storyId) + "/cancel"), {
+      method: "POST",
+      body: JSON.stringify({
+        deviceId: identity.deviceId || "",
+        androidId: identity.androidId || undefined,
+      }),
     });
   }
 
@@ -193,6 +217,7 @@
     updateChildProfile,
     getQuota,
     generateStory,
+    cancelStoryGeneration,
     generateStoryAudio,
     getVoiceMode,
     previewVoice,

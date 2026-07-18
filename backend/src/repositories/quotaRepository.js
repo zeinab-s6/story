@@ -45,30 +45,43 @@ export function countDeviceSuccessGenerationsToday({ deviceId, androidIdHash }) 
 
 const insertGenerationStmt = db.prepare(`
   INSERT INTO story_generations (
-    user_id, device_id, android_id_hash, created_at, status, credits_used
+    user_id, device_id, android_id_hash, story_id, created_at, status, credits_used
   ) VALUES (
-    @userId, @deviceId, @androidIdHash, @createdAt, @status, @creditsUsed
+    @userId, @deviceId, @androidIdHash, @storyId, @createdAt, @status, @creditsUsed
   )
+`);
+
+const revertGenerationByStoryIdStmt = db.prepare(`
+  DELETE FROM story_generations
+  WHERE story_id = ? AND user_id = ? AND status = ?
 `);
 
 export function recordSuccessfulGeneration({
   userId,
   deviceId,
   androidIdHash = null,
+  storyId = null,
   creditsUsed = 1,
 }) {
   return insertGenerationStmt.run({
     userId,
     deviceId,
     androidIdHash,
+    storyId,
     createdAt: new Date().toISOString(),
     status: SUCCESS_STATUS,
     creditsUsed,
   }).lastInsertRowid;
 }
 
+export function revertStoryGenerationByStoryId(storyId, userId) {
+  const result = revertGenerationByStoryIdStmt.run(storyId, userId, SUCCESS_STATUS);
+  return result.changes > 0;
+}
+
 export default {
   countUserSuccessGenerationsToday,
   countDeviceSuccessGenerationsToday,
   recordSuccessfulGeneration,
+  revertStoryGenerationByStoryId,
 };

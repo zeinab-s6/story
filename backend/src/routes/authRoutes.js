@@ -14,9 +14,46 @@ import { userAuth } from '../middleware/userAuth.js';
 import { validateChildProfileInput } from '../validators/childProfileValidator.js';
 import { getChildAvatarUrl } from '../catalog/childAvatars.js';
 import { validateQuotaQuery } from '../validators/storyInputValidator.js';
-import { resolveDeviceIdentity, registerDeviceVisit } from '../services/quotaService.js';
+import { resolveDeviceIdentity, registerDeviceVisit, getQuotaStatus } from '../services/quotaService.js';
+import {
+  assertDeviceAccountAccess,
+  ensureDeviceAccountBinding,
+} from '../services/deviceBindingService.js';
 
 const router = Router();
+
+function resolveAuthDeviceIdentity(body) {
+  const validation = validateQuotaQuery({
+    deviceId: body?.deviceId,
+    androidId: body?.androidId,
+  });
+
+  if (!validation.valid) {
+    return null;
+  }
+
+  return resolveDeviceIdentity({
+    ...validation.data,
+    deviceName: body?.deviceName,
+  });
+}
+
+function attachDeviceToUser(userId, deviceIdentity) {
+  if (!deviceIdentity || !deviceIdentity.androidIdHash) {
+    return;
+  }
+
+  ensureDeviceAccountBinding({
+    androidIdHash: deviceIdentity.androidIdHash,
+    userId,
+    deviceId: deviceIdentity.deviceId,
+  });
+
+  registerDeviceVisit({
+    userId,
+    ...deviceIdentity,
+  });
+}
 
 router.post('/register', (req, res) => {
   const validation = validateAuthInput(req.body, 'register');
@@ -30,6 +67,20 @@ router.post('/register', (req, res) => {
   }
 
   const { email, password, displayName } = validation.data;
+  const deviceIdentity = resolveAuthDeviceIdentity(req.body);
+  const deviceCheck = assertDeviceAccountAccess({
+    androidIdHash: deviceIdentity?.androidIdHash ?? null,
+    userId: null,
+  });
+
+  if (!deviceCheck.allowed) {
+    return res.status(403).json({
+      success: false,
+      code: deviceCheck.code,
+      error: deviceCheck.error,
+    });
+  }
+
   const existing = getUserByEmail(email);
 
   if (existing) {
@@ -47,11 +98,21 @@ router.post('/register', (req, res) => {
 
   const token = signToken({ userId: user.id });
 
+  attachDeviceToUser(user.id, deviceIdentity);
+
+  const quota = deviceIdentity
+    ? getQuotaStatus({
+        userId: user.id,
+        ...deviceIdentity,
+      })
+    : null;
+
   return res.status(201).json({
     success: true,
     token,
     user: toPublicUser(user),
     message: 'ثبت‌نام با موفقیت انجام شد.',
+    ...(quota && { quota }),
   });
 });
 
@@ -67,6 +128,7 @@ router.post('/login', (req, res) => {
   }
 
   const { email, password } = validation.data;
+  const deviceIdentity = resolveAuthDeviceIdentity(req.body);
   const user = getUserByEmail(email);
 
   if (!user) {
@@ -83,13 +145,36 @@ router.post('/login', (req, res) => {
     });
   }
 
+  const deviceCheck = assertDeviceAccountAccess({
+    androidIdHash: deviceIdentity?.androidIdHash ?? null,
+    userId: user.id,
+  });
+
+  if (!deviceCheck.allowed) {
+    return res.status(403).json({
+      success: false,
+      code: deviceCheck.code,
+      error: deviceCheck.error,
+    });
+  }
+
   const token = signToken({ userId: user.id });
+
+  attachDeviceToUser(user.id, deviceIdentity);
+
+  const quota = deviceIdentity
+    ? getQuotaStatus({
+        userId: user.id,
+        ...deviceIdentity,
+      })
+    : null;
 
   return res.json({
     success: true,
     token,
     user: toPublicUser(user),
     message: 'خوش آمدید!',
+    ...(quota && { quota }),
   });
 });
 
@@ -104,9 +189,17 @@ router.get('/me', userAuth, (req, res) => {
       ...deviceValidation.data,
       deviceName: req.query.deviceName,
     });
-    registerDeviceVisit({
+    attachDeviceToUser(req.user.id, deviceIdentity);
+
+    const quota = getQuotaStatus({
       userId: req.user.id,
       ...deviceIdentity,
+    });
+
+    return res.json({
+      success: true,
+      user: req.user,
+      quota,
     });
   }
 

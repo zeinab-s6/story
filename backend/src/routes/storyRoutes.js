@@ -32,7 +32,9 @@ import {
   assertCanGenerateStory,
   getQuotaStatus,
   recordStoryGenerationSuccess,
+  revertStoryGenerationQuota,
 } from '../services/quotaService.js';
+import { trackClientCancellation } from '../utils/requestCancellation.js';
 
 function isValidRequestedVoice(voice) {
   if (voice === undefined || voice === null) {
@@ -132,6 +134,8 @@ router.post('/generate', userAuth, async (req, res) => {
     });
   }
 
+  const cancellation = trackClientCancellation(req, res);
+
   try {
     const result = await createStory({
       ...validation.data,
@@ -146,10 +150,22 @@ router.post('/generate', userAuth, async (req, res) => {
       });
     }
 
+    if (cancellation.isCancelled()) {
+      deleteStoryById(result.storyId);
+      return;
+    }
+
     recordStoryGenerationSuccess({
       userId: req.user.id,
+      storyId: result.storyId,
       ...deviceIdentity,
     });
+
+    if (cancellation.isCancelled()) {
+      revertStoryGenerationQuota({ storyId: result.storyId, userId: req.user.id });
+      deleteStoryById(result.storyId);
+      return;
+    }
 
     return res.status(201).json({
       ...result,
@@ -159,13 +175,71 @@ router.post('/generate', userAuth, async (req, res) => {
       }),
     });
   } catch (err) {
+    if (cancellation.isCancelled()) {
+      return;
+    }
     return res.status(502).json({
       success: false,
       code: QUOTA_ERROR_CODES.STORY_GENERATION_FAILED,
       error: QUOTA_MESSAGES[QUOTA_ERROR_CODES.STORY_GENERATION_FAILED],
       ...(env.isDevelopment && { details: err.message }),
     });
+  } finally {
+    cancellation.cleanup();
   }
+});
+
+router.post('/:id/cancel', userAuth, (req, res) => {
+  const storyId = Number(req.params.id);
+
+  if (!Number.isInteger(storyId) || storyId <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'شناسه قصه معتبر نیست.',
+    });
+  }
+
+  const storyRecord = getStoryById(storyId);
+  if (!storyRecord) {
+    return res.status(404).json({
+      success: false,
+      error: 'قصه‌ای با این شناسه پیدا نشد.',
+    });
+  }
+
+  if (!canAccessStory(storyRecord, req.user)) {
+    return denyStoryAccess(res);
+  }
+
+  const createdAtMs = Date.parse(storyRecord.createdAt);
+  const maxCancelAgeMs = 30 * 60 * 1000;
+  if (!Number.isFinite(createdAtMs) || Date.now() - createdAtMs > maxCancelAgeMs) {
+    return res.status(409).json({
+      success: false,
+      error: 'امکان لغو این قصه وجود ندارد.',
+    });
+  }
+
+  const validation = validateQuotaQuery({
+    deviceId: req.body?.deviceId,
+    androidId: req.body?.androidId,
+  });
+
+  const deviceIdentity = validation.valid
+    ? resolveDeviceIdentity(validation.data)
+    : resolveDeviceIdentity({ deviceId: '', androidId: null });
+
+  revertStoryGenerationQuota({ storyId, userId: req.user.id });
+  deleteStoryById(storyId);
+
+  return res.json({
+    success: true,
+    message: 'ساخت قصه لغو شد.',
+    quota: getQuotaStatus({
+      userId: req.user.id,
+      ...deviceIdentity,
+    }),
+  });
 });
 
 router.get('/mine', userAuth, (req, res) => {
