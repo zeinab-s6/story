@@ -465,6 +465,28 @@ body.drawer-open {
   font-size: 0.85rem;
 }
 
+.form-group--error {
+  scroll-margin-top: calc(var(--header-h) + 16px);
+  scroll-margin-bottom: 24px;
+}
+
+.form-group--error label {
+  color: #C62D32;
+}
+
+.form-group--error input,
+.form-group--error select,
+.form-group--error textarea {
+  border-color: rgba(229, 72, 77, 0.45);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.12);
+}
+
+.field-error {
+  font-size: 0.78rem;
+  color: #C62D32;
+  line-height: 1.45;
+}
+
 /* ---- Chips ---- */
 .goal-chips {
   display: flex;

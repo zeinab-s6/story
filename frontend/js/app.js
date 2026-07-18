@@ -1655,7 +1655,61 @@
     // Error toasts/inline feedback disabled — no popup or status messages.
   }
 
+  var STORY_REQUIRED_FIELDS = ["age", "interest", "goal", "mood", "durationMinutes"];
+
+  function clearFormValidationErrors() {
+    STORY_REQUIRED_FIELDS.forEach(function (fieldId) {
+      var field = $("#" + fieldId);
+      if (!field) return;
+      field.removeAttribute("aria-invalid");
+      field.removeAttribute("aria-describedby");
+      var group = field.closest(".form-group");
+      if (group) {
+        group.classList.remove("form-group--error");
+        var hint = group.querySelector(".field-error");
+        if (hint) hint.remove();
+      }
+    });
+  }
+
+  function showFormValidationError(fieldId, message) {
+    clearFormValidationErrors();
+    var field = $("#" + fieldId);
+    if (!field) return;
+
+    var group = field.closest(".form-group");
+    if (group) {
+      group.classList.add("form-group--error");
+      var hint = document.createElement("span");
+      hint.className = "field-error";
+      hint.id = "field-error-" + fieldId;
+      hint.setAttribute("role", "alert");
+      hint.textContent = message;
+      group.appendChild(hint);
+      field.setAttribute("aria-invalid", "true");
+      field.setAttribute("aria-describedby", hint.id);
+      group.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      field.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    var errorEl = $("#form-error");
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+    }
+
+    window.setTimeout(function () {
+      try {
+        field.focus({ preventScroll: true });
+      } catch (_err) {
+        field.focus();
+      }
+    }, 320);
+  }
+
   function clearError() {
+    clearFormValidationErrors();
     var errorEl = $("#form-error");
     if (errorEl) { errorEl.textContent = ""; errorEl.hidden = true; }
   }
@@ -1747,11 +1801,21 @@
 
   function validateForm() {
     var data = getFormData();
-    if (!Number.isFinite(data.age) && data.age !== 0) return "سن کودک را انتخاب کن.";
-    if (!data.interest) return "علاقه کودک را وارد کن.";
-    if (!data.goal) return "هدف قصه را انتخاب کن.";
-    if (!data.mood) return "حال کودک را انتخاب کن.";
-    if (!data.durationMinutes) return "مدت زمان قصه را انتخاب کن.";
+    if (!Number.isFinite(data.age) && data.age !== 0) {
+      return { fieldId: "age", message: "سن کودک را انتخاب کن." };
+    }
+    if (!data.interest) {
+      return { fieldId: "interest", message: "علاقه کودک را وارد کن." };
+    }
+    if (!data.goal) {
+      return { fieldId: "goal", message: "هدف قصه را انتخاب کن." };
+    }
+    if (!data.mood) {
+      return { fieldId: "mood", message: "حال کودک را انتخاب کن." };
+    }
+    if (!data.durationMinutes) {
+      return { fieldId: "durationMinutes", message: "مدت زمان قصه را انتخاب کن." };
+    }
     return null;
   }
 
@@ -2758,9 +2822,9 @@
 
   async function handleGenerateStory() {
     clearError();
-    var err = validateForm();
-    if (err) {
-      showError(err);
+    var validation = validateForm();
+    if (validation) {
+      showFormValidationError(validation.fieldId, validation.message);
       return;
     }
     if (isQuotaBlocked()) {
@@ -3253,6 +3317,12 @@
     ["age", "goal", "mood", "durationMinutes", "interest", "childName"].forEach(function (id) {
       var el = $("#" + id);
       if (el) el.addEventListener("change", function () {
+        if (STORY_REQUIRED_FIELDS.indexOf(id) !== -1) {
+          var group = el.closest(".form-group");
+          if (group && group.classList.contains("form-group--error")) {
+            clearError();
+          }
+        }
         updateSummaries();
         if (id === "childName") {
           saveChildName(el.value, false);
@@ -3260,6 +3330,12 @@
         }
       });
       if (el) el.addEventListener("input", function () {
+        if (STORY_REQUIRED_FIELDS.indexOf(id) !== -1) {
+          var group = el.closest(".form-group");
+          if (group && group.classList.contains("form-group--error")) {
+            clearError();
+          }
+        }
         updateSummaries();
         if (id === "childName") {
           saveChildName(el.value, false);
