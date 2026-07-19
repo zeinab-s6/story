@@ -15,12 +15,19 @@ import { validateChildProfileInput } from '../validators/childProfileValidator.j
 import { getChildAvatarUrl } from '../catalog/childAvatars.js';
 import { validateQuotaQuery } from '../validators/storyInputValidator.js';
 import { resolveDeviceIdentity, registerDeviceVisit, getQuotaStatus } from '../services/quotaService.js';
+import { hashDeviceIdentifier } from '../utils/deviceHash.js';
 import {
   assertDeviceAccountAccess,
   ensureDeviceAccountBinding,
 } from '../services/deviceBindingService.js';
 
 const router = Router();
+
+function extractAndroidIdHash(source) {
+  const raw = source?.androidId;
+  if (typeof raw !== 'string') return null;
+  return hashDeviceIdentifier(raw);
+}
 
 function resolveAuthDeviceIdentity(body) {
   const validation = validateQuotaQuery({
@@ -29,7 +36,13 @@ function resolveAuthDeviceIdentity(body) {
   });
 
   if (!validation.valid) {
-    return null;
+    const androidIdHash = extractAndroidIdHash(body);
+    if (!androidIdHash) return null;
+    return {
+      deviceId: '',
+      androidIdHash,
+      deviceName: null,
+    };
   }
 
   return resolveDeviceIdentity({
@@ -48,6 +61,10 @@ function attachDeviceToUser(userId, deviceIdentity) {
     userId,
     deviceId: deviceIdentity.deviceId,
   });
+
+  if (!deviceIdentity.deviceId) {
+    return;
+  }
 
   registerDeviceVisit({
     userId,
@@ -69,8 +86,9 @@ router.post('/register', (req, res) => {
   const { email, password, displayName } = validation.data;
   const deviceIdentity = resolveAuthDeviceIdentity(req.body);
   const deviceCheck = assertDeviceAccountAccess({
-    androidIdHash: deviceIdentity?.androidIdHash ?? null,
+    androidIdHash: deviceIdentity?.androidIdHash ?? extractAndroidIdHash(req.body),
     userId: null,
+    context: 'register',
   });
 
   if (!deviceCheck.allowed) {
@@ -146,8 +164,9 @@ router.post('/login', (req, res) => {
   }
 
   const deviceCheck = assertDeviceAccountAccess({
-    androidIdHash: deviceIdentity?.androidIdHash ?? null,
+    androidIdHash: deviceIdentity?.androidIdHash ?? extractAndroidIdHash(req.body),
     userId: user.id,
+    context: 'login',
   });
 
   if (!deviceCheck.allowed) {
@@ -184,11 +203,32 @@ router.get('/me', userAuth, (req, res) => {
     androidId: req.query.androidId,
   });
 
-  if (deviceValidation.valid) {
-    const deviceIdentity = resolveDeviceIdentity({
-      ...deviceValidation.data,
-      deviceName: req.query.deviceName,
+  const deviceIdentity = deviceValidation.valid
+    ? resolveDeviceIdentity({
+        ...deviceValidation.data,
+        deviceName: req.query.deviceName,
+      })
+    : {
+        deviceId: '',
+        androidIdHash: extractAndroidIdHash(req.query),
+        deviceName: null,
+      };
+
+  const deviceCheck = assertDeviceAccountAccess({
+    androidIdHash: deviceIdentity.androidIdHash,
+    userId: req.user.id,
+    context: 'login',
+  });
+
+  if (!deviceCheck.allowed) {
+    return res.status(403).json({
+      success: false,
+      code: deviceCheck.code,
+      error: deviceCheck.error,
     });
+  }
+
+  if (deviceValidation.valid) {
     attachDeviceToUser(req.user.id, deviceIdentity);
 
     const quota = getQuotaStatus({

@@ -48,6 +48,30 @@
     }
   }
 
+  function resolveAuthError(err, fallback) {
+    if (err && err.code === "DEVICE_ACCOUNT_BOUND" && err.message) {
+      return err.message;
+    }
+    if (err && err.message === "Failed to fetch") {
+      return "اتصال به سرور برقرار نشد. بک‌اند را اجرا کن.";
+    }
+    if (err && err.message) {
+      return err.message;
+    }
+    return fallback;
+  }
+
+  function ensureAndroidReady() {
+    var check = window.LalaByeDevice && window.LalaByeDevice.assertAndroidIdentityReady
+      ? window.LalaByeDevice.assertAndroidIdentityReady()
+      : { ok: true };
+    if (!check.ok) {
+      showError(check.error);
+      return false;
+    }
+    return true;
+  }
+
   if (form) {
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
@@ -61,6 +85,8 @@
         return;
       }
 
+      if (!ensureAndroidReady()) return;
+
       setLoading(btn, true);
       try {
         var result = await window.StorytellingAPI.login(email, password);
@@ -72,12 +98,7 @@
         }
         redirectAfterAuth(result.user);
       } catch (err) {
-        var msg = "ورود ناموفق بود.";
-        if (err.message === "Failed to fetch") {
-          msg = "اتصال به سرور برقرار نشد. بک‌اند را اجرا کن.";
-        } else if (err.message) {
-          msg = err.message;
-        }
+        var msg = resolveAuthError(err, "ورود ناموفق بود.");
         if (msg === "حساب کاربری خود را ایجاد کنید.") {
           switchTab("register");
           var registerEmail = document.getElementById("register-email");
@@ -104,6 +125,8 @@
         return;
       }
 
+      if (!ensureAndroidReady()) return;
+
       setLoading(btn, true);
       try {
         var result = await window.StorytellingAPI.register(email, password, name);
@@ -115,13 +138,7 @@
         }
         redirectAfterAuth(result.user);
       } catch (err) {
-        var msg = "ثبت‌نام ناموفق بود.";
-        if (err.message === "Failed to fetch") {
-          msg = "اتصال به سرور برقرار نشد. بک‌اند را اجرا کن.";
-        } else if (err.message) {
-          msg = err.message;
-        }
-        showError(msg);
+        showError(resolveAuthError(err, "ثبت‌نام ناموفق بود."));
       } finally {
         setLoading(btn, false);
       }

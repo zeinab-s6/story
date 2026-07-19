@@ -10,6 +10,10 @@
     return null;
   }
 
+  function isAndroidApp() {
+    return !!getNativeBridge();
+  }
+
   function getNativeAndroidId() {
     var bridge = getNativeBridge();
     if (!bridge || typeof bridge.getAndroidId !== "function") {
@@ -71,8 +75,23 @@
     };
   }
 
+  function assertAndroidIdentityReady() {
+    if (!isAndroidApp()) {
+      return { ok: true };
+    }
+    if (getNativeAndroidId()) {
+      return { ok: true };
+    }
+    return {
+      ok: false,
+      error: "شناسه دستگاه اندروید در دسترس نیست. لطفاً اپ را ببندید و دوباره باز کنید.",
+    };
+  }
+
   window.LalaByeDevice = {
     getDeviceIdentity: getDeviceIdentity,
     getFallbackDeviceId: getFallbackDeviceId,
+    isAndroidApp: isAndroidApp,
+    assertAndroidIdentityReady: assertAndroidIdentityReady,
   };
 })();

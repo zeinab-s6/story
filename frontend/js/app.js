@@ -512,10 +512,8 @@
     if (metaEl) {
       if (!ensureStoryAudioUrl()) {
         metaEl.textContent = "صدا در حال آماده‌سازی است...";
-      } else if (!isStoryAudioHydrated()) {
-        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
       } else {
-        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa + " · برای آفلاین دانلود کن";
+        metaEl.textContent = (s.durationMinutes || "—") + " دقیقه · صدای " + voice.nameFa;
       }
     }
     if (playBtn) {
@@ -898,7 +896,7 @@
       if (token !== audioHydrationToken) return false;
 
       if (label) {
-        label.textContent = "فایل صوتی آماده است — می‌توانی آفلاین گوش بدهی یا ذخیره کنی.";
+        label.textContent = "فایل صوتی آماده است — می‌توانی پخش کنی.";
       }
       updateDownloadControls();
       updateHomePlayTimeline();
@@ -951,14 +949,9 @@
         '<p class="audio-player-card__title">فایل صوتی قصه</p>' +
         '<div class="audio-download-bar">' +
           '<span class="audio-download-bar__label" id="audio-player-status">' + getVoiceTagline() + '</span>' +
-          '<button type="button" class="btn btn--sm" id="btn-download-inline" aria-label="دانلود فایل صوتی">' +
-            'دانلود صدا' +
-          '</button>' +
         '</div>' +
       '</div>';
     ensureStoryAudioElement();
-    var inlineDownload = $("#btn-download-inline");
-    if (inlineDownload) inlineDownload.addEventListener("click", handleDownload);
   }
 
   function bindStoryAudioPlaybackEvents() {
@@ -1115,24 +1108,7 @@
   }
 
   function updateDownloadControls() {
-    var canDownload = !!(state.storyResult && (ensureStoryAudioUrl() || state.storyId || state.isPlaying));
-    var disabled = !canDownload || state.isGeneratingAudio || state.isDownloading;
-    var inlineBtn = $("#btn-download-inline");
-    var homeDownloadBtn = $("#btn-home-download");
     var regenBtn = $("#btn-regenerate-audio");
-    if (inlineBtn) {
-      inlineBtn.disabled = disabled;
-      inlineBtn.textContent = state.isDownloading ? "در حال دانلود..." : "دانلود صدا";
-    }
-    if (homeDownloadBtn) {
-      homeDownloadBtn.disabled = disabled;
-      homeDownloadBtn.setAttribute(
-        "aria-label",
-        state.isDownloading ? "در حال دانلود..." : "دانلود برای آفلاین"
-      );
-      homeDownloadBtn.classList.toggle("home-play-card__download--loading", state.isDownloading);
-      homeDownloadBtn.classList.toggle("home-play-card__download--ready", canDownload && !disabled);
-    }
     if (regenBtn) {
       regenBtn.hidden = !state.storyResult;
       regenBtn.disabled = state.isGeneratingAudio;
@@ -3622,11 +3598,6 @@
       });
     });
 
-    $("#btn-home-download") && $("#btn-home-download").addEventListener("click", function () {
-      if (!state.storyResult) return;
-      handleDownload();
-    });
-
     bindHomePlayTimelineControls();
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
@@ -3661,7 +3632,12 @@
           }
         }
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (err && err.code === "DEVICE_ACCOUNT_BOUND") {
+          window.StorytellingAuth.clearSession();
+          window.location.replace("/login");
+          return;
+        }
         /* offline or expired — local session still used */
       });
   }

@@ -8,11 +8,15 @@ export const DEVICE_BINDING_ERROR_CODES = {
 };
 
 export const DEVICE_BINDING_MESSAGES = {
-  [DEVICE_BINDING_ERROR_CODES.DEVICE_ACCOUNT_BOUND]:
-    'شما قبلاً با یک ایمیل دیگر وارد شده‌اید.',
+  register:
+    'روی این گوشی قبلاً با یک ایمیل دیگر ثبت‌نام شده است. فقط همان حساب قابل استفاده است.',
+  login:
+    'این گوشی به حساب دیگری متصل است. فقط با همان ایمیل می‌توانید وارد شوید.',
+  default:
+    'روی این گوشی قبلاً با یک ایمیل دیگر حساب ساخته شده است.',
 };
 
-export function assertDeviceAccountAccess({ androidIdHash, userId }) {
+export function assertDeviceAccountAccess({ androidIdHash, userId, context = 'default' }) {
   if (!androidIdHash) {
     return { allowed: true };
   }
@@ -26,10 +30,13 @@ export function assertDeviceAccountAccess({ androidIdHash, userId }) {
     return { allowed: true };
   }
 
+  const message =
+    DEVICE_BINDING_MESSAGES[context] || DEVICE_BINDING_MESSAGES.default;
+
   return {
     allowed: false,
     code: DEVICE_BINDING_ERROR_CODES.DEVICE_ACCOUNT_BOUND,
-    error: DEVICE_BINDING_MESSAGES[DEVICE_BINDING_ERROR_CODES.DEVICE_ACCOUNT_BOUND],
+    error: message,
   };
 }
 
