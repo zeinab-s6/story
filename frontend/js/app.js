@@ -2009,8 +2009,16 @@
 
   function syncChildDisplay() {
     var name = getEffectiveChildName();
+    var displayName = name || "کودک";
     var nameEl = $("#mobile-profile-name");
-    if (nameEl) nameEl.textContent = name || "کودک";
+    if (nameEl) nameEl.textContent = displayName;
+
+    var navLabel = $("#bottom-nav-profile-label");
+    if (navLabel) navLabel.textContent = displayName;
+
+    var navBtn = $("#bottom-nav-profile");
+    if (navBtn) navBtn.setAttribute("aria-label", displayName);
+
     renderQuotaUsage();
   }
 

@@ -251,6 +251,9 @@
 
     <!-- Stories List Panel (قصه‌های من) -->
     <aside class="panel panel--stories" id="stories-panel" aria-label="قصه‌های من">
+      <section class="stories-banner" aria-hidden="true">
+        <img class="stories-banner__img" src="images/banner-background.jpg" alt="" decoding="async">
+      </section>
       <section class="card glass">
         <div class="card__header">
           <h2 class="card__title">قصه‌های من</h2>
@@ -431,7 +434,7 @@
     </button>
     <button type="button" class="bottom-nav__item" data-mobile-tab="home" aria-label="قصه‌های من">
       <span class="bottom-nav__icon">
-        <img src="images/home.png" alt="" width="26" height="26" decoding="async">
+        <img src="images/heart-plus.png" alt="" width="26" height="26" decoding="async">
       </span>
       <span class="bottom-nav__label">قصه‌های من</span>
     </button>
@@ -441,11 +444,11 @@
       </span>
       <span class="bottom-nav__label">راوی</span>
     </button>
-    <button type="button" class="bottom-nav__item" data-mobile-tab="profile" aria-label="پروفایل">
+    <button type="button" class="bottom-nav__item" data-mobile-tab="profile" aria-label="پروفایل" id="bottom-nav-profile">
       <span class="bottom-nav__icon">
         <img src="images/person.png" alt="" width="26" height="26" decoding="async">
       </span>
-      <span class="bottom-nav__label">پروفایل</span>
+      <span class="bottom-nav__label" id="bottom-nav-profile-label">پروفایل</span>
     </button>
   </nav>
 

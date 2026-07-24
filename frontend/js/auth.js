@@ -159,6 +159,12 @@
     }
 
     if (mobileName && user.childName) mobileName.textContent = user.childName;
+
+    var navLabel = document.getElementById("bottom-nav-profile-label");
+    if (navLabel && user.childName) navLabel.textContent = user.childName;
+    var navBtn = document.getElementById("bottom-nav-profile");
+    if (navBtn && user.childName) navBtn.setAttribute("aria-label", user.childName);
+
     renderChildAvatar();
     if (window.__lalaByeSyncChildDisplay) window.__lalaByeSyncChildDisplay();
   }

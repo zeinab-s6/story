@@ -2765,6 +2765,13 @@ body.app-shell .chip {
   line-height: 1.2;
 }
 
+#bottom-nav-profile-label {
+  max-width: 4.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .btn--full {
   width: 100%;
 }
@@ -2838,6 +2845,29 @@ body[data-mobile-tab="home"] .center-card--has-story .audio-player-wrap {
   display: none;
   flex-direction: column;
   gap: 12px;
+}
+
+.stories-banner {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-md, 16px);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  max-height: 180px;
+  background: #1a2038;
+}
+
+.stories-banner__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+body.app-shell .stories-banner {
+  border-radius: var(--radius-md, 16px);
+  max-height: 160px;
 }
 
 .stories-empty {
