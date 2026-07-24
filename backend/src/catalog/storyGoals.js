@@ -1,8 +1,8 @@
 export const STORY_GOALS = {
   sleep: {
     key: 'sleep',
-    labelFa: 'قصه آرام‌سازی قبل خواب',
-    labelEn: 'Bedtime calming story',
+    labelFa: 'قصه قبل خواب',
+    labelEn: 'Bedtime story',
   },
   food: {
     key: 'food',

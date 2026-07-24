@@ -642,6 +642,14 @@
     return "قصه‌ای با صدای انتخابی شما.";
   }
 
+  function sanitizeStoryDisplayText(text) {
+    if (!text || typeof text !== "string") return "";
+    return text
+      .replace(/داستان[یِ]?\s*آرامش[\u200c\-]?بخش\s*برای\s*خواب\s*شبانه[.\s]*/gi, "")
+      .replace(/^\s+|\s+$/g, "")
+      .replace(/\n{3,}/g, "\n\n");
+  }
+
   function getStoryDisplayAge(story) {
     if (!story) return "—";
     if (Number.isFinite(story.age) || story.age === 0) {
@@ -2730,7 +2738,7 @@
     card.className = "history-card story-accordion";
     card.dataset.storyId = String(item.storyId || "");
 
-    var storyText = (item.story && item.story.storyText) || "";
+    var storyText = sanitizeStoryDisplayText((item.story && item.story.storyText) || "");
     var previewText = storyText.length > 180 ? storyText.slice(0, 180) + "…" : storyText;
 
     var headerBtn = document.createElement("button");
@@ -2741,10 +2749,11 @@
     var titles = document.createElement("div");
     titles.className = "story-accordion__titles";
     var titleEl = document.createElement("h4");
-    titleEl.textContent = item.title || "قصه بدون عنوان";
+    var rawTitle = item.title || "قصه بدون عنوان";
+    titleEl.textContent = sanitizeStoryDisplayText(rawTitle) || "قصه بدون عنوان";
     var metaEl = document.createElement("p");
     metaEl.className = "history-card__meta";
-    metaEl.textContent = (item.durationMinutes || "—") + " دقیقه · " + getStorySourceLabel();
+    metaEl.textContent = (item.durationMinutes || "—") + " دقیقه";
     var timeEl = document.createElement("time");
     timeEl.className = "history-card__date";
     timeEl.textContent = formatPersianDate(item.savedAt);
@@ -2774,9 +2783,6 @@
       '<button type="button" class="btn btn--primary btn--sm history-play" aria-label="پخش قصه">' +
         '<span class="app-icon app-icon--sm" data-icon="play"></span> پخش' +
       '</button>' +
-      '<button type="button" class="btn btn--ghost btn--sm history-download" aria-label="دانلود آفلاین">' +
-        '<span class="app-icon app-icon--sm" data-icon="download"></span> دانلود آفلاین' +
-      '</button>' +
       '<button type="button" class="btn btn--ghost btn--sm history-restore">خواندن کامل</button>';
 
     body.appendChild(textEl);
@@ -2797,12 +2803,6 @@
       playHistoryItemInline(item, playBtn);
     });
 
-    var downloadBtn = card.querySelector(".history-download");
-    downloadBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      downloadHistoryItemInline(item, downloadBtn);
-    });
-
     var restoreBtn = card.querySelector(".history-restore");
     var isFullText = false;
     restoreBtn.addEventListener("click", function (e) {
@@ -2813,7 +2813,7 @@
 
       var fullText = storyText;
       if (!fullText && item.story) {
-        fullText = item.story.storyText || item.story.parentIntro || "";
+        fullText = sanitizeStoryDisplayText(item.story.storyText || "");
       }
       if (!fullText) {
         textEl.textContent = "متن قصه در دسترس نیست.";
@@ -2827,12 +2827,7 @@
         return;
       }
 
-      var parts = [];
-      if (item.story && item.story.parentIntro) {
-        parts.push(item.story.parentIntro);
-      }
-      parts.push(fullText);
-      textEl.textContent = parts.join("\n\n");
+      textEl.textContent = fullText;
       restoreBtn.textContent = "نمایش خلاصه";
       isFullText = true;
       textEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
