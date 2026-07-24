@@ -21,7 +21,7 @@
     if (!window.StorytellingAuth.requireChildProfile()) { /* redirect */ }
   </script>
 </head>
-<body class="app-shell" data-mobile-tab="home">
+<body class="app-shell" data-mobile-tab="story">
   <div class="app-frame">
   <div class="app-bg app-bg--headspace" aria-hidden="true"></div>
 
@@ -41,12 +41,8 @@
         </div>
       </div>
       <div class="header__actions">
-        <button type="button" class="btn btn--ghost btn--icon header__toolbar-btn header__history-btn" id="btn-header-history" aria-label="لیست قصه‌ها">
-          <span class="app-icon app-icon--md" data-icon="clock"></span>
-        </button>
         <nav class="header__nav header__nav--desktop" aria-label="ناوبری اصلی">
-          <button type="button" class="btn btn--ghost" id="btn-history">لیست قصه‌ها</button>
-          <button type="button" class="btn btn--ghost" id="btn-settings">تنظیمات</button>
+          <button type="button" class="btn btn--ghost" id="btn-settings">راوی</button>
         </nav>
       </div>
     </div>
@@ -72,37 +68,31 @@
           <p class="card__subtitle">وقتی قصه ای برای گفتن نداری با لالابای برای کوچولوت یک قصه تازه بساز.</p>
         </div>
         <form class="story-form" id="story-form" novalidate>
-          <div class="form-group">
-            <label for="childName">نام کودک</label>
-            <input type="text" id="childName" name="childName" placeholder="مثلاً ستاره" autocomplete="off">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="age">سن کودک</label>
-              <select id="age" name="age" required>
-                <option value="">انتخاب کن</option>
-                <option value="0">۰ سال</option>
-                <option value="1">۱ سال</option>
-                <option value="2">۲ سال</option>
-                <option value="3">۳ سال</option>
-                <option value="4" selected>۴ سال</option>
-                <option value="5">۵ سال</option>
-                <option value="6">۶ سال</option>
-                <option value="7">۷ سال</option>
-                <option value="8">۸ سال</option>
-              </select>
-            </div>
-            <div class="form-group">
+          <div class="form-group form-group--duration">
+            <div class="duration-range__header">
               <label for="durationMinutes">مدت قصه</label>
-              <select id="durationMinutes" name="durationMinutes" required>
-                <option value="2">۲ دقیقه</option>
-                <option value="3" selected>۳ دقیقه</option>
-                <option value="5">۵ دقیقه</option>
-              </select>
+              <span class="duration-range__value" id="duration-range-value">۳ دقیقه</span>
+            </div>
+            <input
+              type="range"
+              id="durationMinutes"
+              name="durationMinutes"
+              min="1"
+              max="5"
+              step="1"
+              value="3"
+              required
+              aria-valuemin="1"
+              aria-valuemax="5"
+              aria-valuenow="3"
+              aria-valuetext="۳ دقیقه"
+            >
+            <div class="duration-range__ticks" aria-hidden="true">
+              <span>۱</span><span>۲</span><span>۳</span><span>۴</span><span>۵</span>
             </div>
           </div>
           <div class="form-group">
-            <label for="interest">علاقه کودک</label>
+            <label for="interest">علاقه کودک <span class="required-mark" aria-hidden="true">*</span></label>
             <input type="text" id="interest" name="interest" placeholder="مثلاً دایناسور، ماشین، گربه، فضا" required>
           </div>
           <div class="form-group">
@@ -259,24 +249,23 @@
       </div>
     </section>
 
-    <!-- Stories List Panel (mobile) -->
-    <aside class="panel panel--stories" id="stories-panel" aria-label="لیست قصه‌ها">
+    <!-- Stories List Panel (قصه‌های من) -->
+    <aside class="panel panel--stories" id="stories-panel" aria-label="قصه‌های من">
       <section class="card glass">
         <div class="card__header">
-          <h2 class="card__title">لیست قصه‌ها</h2>
-          <p class="card__subtitle">قصه‌های ساخته‌شده را اینجا می‌بینی. با بازیابی، قصه در صفحه خانه از اول قابل پخش است.</p>
+          <h2 class="card__title">قصه‌های من</h2>
+          <p class="card__subtitle">قصه‌های ساخته‌شده را اینجا بخوان، پخش کن یا برای آفلاین دانلود کن.</p>
         </div>
         <p class="stories-empty" id="stories-empty">هنوز قصه‌ای ساخته نشده. اولین قصه را بساز تا اینجا نمایش داده شود.</p>
-        <div class="history-list" id="stories-list"></div>
-        <button type="button" class="btn btn--danger btn--sm stories-clear-btn" id="btn-clear-stories">پاک کردن لیست</button>
+        <div class="history-list stories-accordion" id="stories-list"></div>
       </section>
     </aside>
 
     <!-- Right Panel -->
-    <aside class="panel panel--right" id="settings-panel" aria-label="تنظیمات صدا">
+    <aside class="panel panel--right" id="settings-panel" aria-label="راوی">
       <section class="card glass">
         <div class="card__header">
-          <h2 class="card__title">تنظیمات صدا</h2>
+          <h2 class="card__title">راوی</h2>
           <p class="card__subtitle" id="voice-settings-subtitle">سرعت و لحن را تنظیم کن؛ برای قصه، تیک پس‌زمینه را فقط هنگام ساخت بزن.</p>
           <p class="voice-mode-status" id="voice-mode-status" hidden></p>
         </div>
@@ -320,11 +309,11 @@
         </div>
 
         <div class="advanced-section">
-          <button type="button" class="advanced-toggle" id="advanced-toggle" aria-expanded="true" aria-controls="advanced-body">
+          <button type="button" class="advanced-toggle" id="advanced-toggle" aria-expanded="false" aria-controls="advanced-body">
             تنظیمات پیشرفته
             <span class="advanced-toggle__icon app-icon app-icon--sm" data-icon="chevronDown"></span>
           </button>
-          <div class="advanced-body" id="advanced-body">
+          <div class="advanced-body" id="advanced-body" hidden>
             <div class="slider-group">
               <div class="slider-label">
                 <label for="adv-pauseBetweenSentences">مکث بین جمله‌ها</label>
@@ -392,19 +381,9 @@
       </section>
 
       <nav class="mobile-menu card glass" aria-label="منوی پروفایل">
-        <button type="button" class="mobile-menu__item" data-mobile-tab-link="voice">
-          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="mic"></span>
-          <span class="mobile-menu__label">تنظیمات صدا</span>
-          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
-        </button>
-        <button type="button" class="mobile-menu__item" data-mobile-tab-link="story">
-          <span class="mobile-menu__icon app-icon app-icon--md" data-icon="book"></span>
-          <span class="mobile-menu__label">ساخت قصه جدید</span>
-          <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
-        </button>
         <button type="button" class="mobile-menu__item mobile-menu__item--danger" id="mobile-btn-logout">
           <span class="mobile-menu__icon app-icon app-icon--md" data-icon="logout"></span>
-          <span class="mobile-menu__label">خروج از حساب</span>
+          <span class="mobile-menu__label">خروج از حساب کاربری</span>
           <span class="mobile-menu__chevron app-icon app-icon--sm" data-icon="chevronLeft"></span>
         </button>
       </nav>
@@ -444,29 +423,29 @@
 
   <!-- Mobile Bottom Nav -->
   <nav class="bottom-nav" aria-label="ناوبری موبایل">
-    <button type="button" class="bottom-nav__item bottom-nav__item--active" data-mobile-tab="home" aria-label="خانه">
-      <span class="bottom-nav__icon">
-        <img src="images/home.png" alt="" width="26" height="26" decoding="async">
-      </span>
-      <span class="bottom-nav__label">خانه</span>
-    </button>
-    <button type="button" class="bottom-nav__item" data-mobile-tab="story" aria-label="ساخت قصه">
+    <button type="button" class="bottom-nav__item bottom-nav__item--active" data-mobile-tab="story" aria-label="ساخت قصه">
       <span class="bottom-nav__icon">
         <img src="images/book.png" alt="" width="26" height="26" decoding="async">
       </span>
-      <span class="bottom-nav__label">قصه</span>
+      <span class="bottom-nav__label">ساخت قصه</span>
     </button>
-    <button type="button" class="bottom-nav__item" data-mobile-tab="voice" aria-label="صداها">
+    <button type="button" class="bottom-nav__item" data-mobile-tab="home" aria-label="قصه‌های من">
+      <span class="bottom-nav__icon">
+        <img src="images/home.png" alt="" width="26" height="26" decoding="async">
+      </span>
+      <span class="bottom-nav__label">قصه‌های من</span>
+    </button>
+    <button type="button" class="bottom-nav__item" data-mobile-tab="voice" aria-label="راوی">
       <span class="bottom-nav__icon">
         <img src="images/mic.png" alt="" width="26" height="26" decoding="async">
       </span>
-      <span class="bottom-nav__label">تنظیمات</span>
+      <span class="bottom-nav__label">راوی</span>
     </button>
     <button type="button" class="bottom-nav__item" data-mobile-tab="profile" aria-label="پروفایل">
       <span class="bottom-nav__icon">
         <img src="images/person.png" alt="" width="26" height="26" decoding="async">
       </span>
-      <span class="bottom-nav__label">من</span>
+      <span class="bottom-nav__label">پروفایل</span>
     </button>
   </nav>
 
@@ -495,11 +474,21 @@
     </div>
   </div>
 
-  <!-- History Drawer -->
+  <!-- Quota Exhausted Modal -->
+  <div class="quota-modal" id="quota-modal" hidden aria-hidden="true">
+    <div class="quota-modal__backdrop" data-quota-close aria-hidden="true"></div>
+    <div class="quota-modal__dialog" role="dialog" aria-labelledby="quota-modal-title" aria-modal="true">
+      <h2 class="quota-modal__title" id="quota-modal-title">ساخت قصه برای امروز تمام شد</h2>
+      <p class="quota-modal__text" id="quota-modal-text">روزانه حداکثر ۲ قصه می‌توانید بسازید. فردا دوباره امتحان کنید.</p>
+      <button type="button" class="btn btn--primary btn--full" id="quota-modal-close">متوجه شدم</button>
+    </div>
+  </div>
+
+  <!-- History Drawer (legacy / desktop fallback) -->
   <div class="overlay" id="drawer-overlay" aria-hidden="true"></div>
-  <aside class="drawer" id="history-drawer" aria-label="لیست قصه‌ها" aria-hidden="true">
+  <aside class="drawer" id="history-drawer" aria-label="قصه‌های من" aria-hidden="true" hidden>
     <div class="drawer__header">
-      <h2>لیست قصه‌ها</h2>
+      <h2>قصه‌های من</h2>
       <button type="button" class="btn btn--ghost btn--icon" id="drawer-close" aria-label="بستن">
         <span class="app-icon app-icon--md" data-icon="close"></span>
       </button>

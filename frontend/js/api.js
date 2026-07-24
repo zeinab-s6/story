@@ -114,6 +114,20 @@
     });
   }
 
+  async function requestOtp(phone) {
+    return request(apiUrl("/api/auth/otp/request"), {
+      method: "POST",
+      body: JSON.stringify({ phone: phone }),
+    });
+  }
+
+  async function verifyOtp(phone, code) {
+    return request(apiUrl("/api/auth/otp/verify"), {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ phone: phone, code: code }, getAuthDevicePayload())),
+    });
+  }
+
   async function getMe() {
     var identity = window.LalaByeDevice?.getDeviceIdentity?.() || {};
     var query = [];
@@ -213,6 +227,8 @@
     buildFullAudioUrl,
     login,
     register,
+    requestOtp,
+    verifyOtp,
     getMe,
     updateChildProfile,
     getQuota,

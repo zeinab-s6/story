@@ -113,7 +113,7 @@
     quota: null,
   };
 
-  let mobileTab = "home";
+  let mobileTab = "story";
   let prevMobileTab = mobileTab;
   let audioElement = null;
   let storyAudioBlobUrl = null;
@@ -161,7 +161,7 @@
   }
 
   function setMobileTab(tab) {
-    var nextTab = tab || "home";
+    var nextTab = tab || "story";
     if (nextTab === "stories") nextTab = "home";
     var tabChanged = nextTab !== mobileTab;
     prevMobileTab = mobileTab;
@@ -188,6 +188,9 @@
       if (voiceLibrary && window.StorytellingIcons) {
         window.StorytellingIcons.injectAll(voiceLibrary);
       }
+    }
+    if (mobileTab === "home") {
+      renderStoriesPanel();
     }
     if (mobileTab === "profile") {
       refreshQuotaDisplay();
@@ -1713,7 +1716,7 @@
     // Error toasts/inline feedback disabled — no popup or status messages.
   }
 
-  var STORY_REQUIRED_FIELDS = ["age", "interest", "goal", "mood", "durationMinutes"];
+  var STORY_REQUIRED_FIELDS = ["interest", "goal", "mood", "durationMinutes"];
 
   function clearFormValidationErrors() {
     STORY_REQUIRED_FIELDS.forEach(function (fieldId) {
@@ -1831,7 +1834,30 @@
     if (quota && quota.deviceExceeded) {
       return "امروز روی این دستگاه حداکثر ۲ داستان ساخته شده است.\nفردا دوباره می‌توانید داستان جدید بسازید.";
     }
-    return "استفاده امروزت به اتمام رسید!\nفردا دوباره می‌توانی داستان جدید بسازی.";
+    return "ساخت قصه برای امروز تمام شد.\nروزانه حداکثر ۲ قصه می‌توانید بسازید.";
+  }
+
+  function openQuotaModal(message) {
+    var modal = $("#quota-modal");
+    var textEl = $("#quota-modal-text");
+    if (textEl) {
+      textEl.textContent = (message || getQuotaBlockedMessage()).replace(/\n/g, " ");
+    }
+    if (!modal) {
+      showToast(message || getQuotaBlockedMessage(), "error");
+      return;
+    }
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("quota-modal-open");
+  }
+
+  function closeQuotaModal() {
+    var modal = $("#quota-modal");
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("quota-modal-open");
   }
 
   function formatQuotaUsageCount(value) {
@@ -1867,8 +1893,10 @@
     var btn = $("#btn-create-story");
     if (!btn) return;
     var blocked = isQuotaBlocked();
-    btn.disabled = blocked || state.isGeneratingStory;
-    btn.setAttribute("aria-disabled", blocked ? "true" : "false");
+    var generating = state.isGeneratingStory;
+    btn.disabled = generating;
+    btn.setAttribute("aria-disabled", blocked || generating ? "true" : "false");
+    btn.classList.toggle("btn--quota-blocked", blocked && !generating);
   }
 
   async function refreshQuotaDisplay() {
@@ -1896,9 +1924,11 @@
 
   function getFormData() {
     var device = getDevicePayload();
+    var user = window.StorytellingAuth && window.StorytellingAuth.getUser();
+    var childName = (user && user.childName) || loadSavedChildName() || "";
     return {
-      childName: ($("#childName") && $("#childName").value || "").trim(),
-      age: Number($("#age") && $("#age").value),
+      childName: childName,
+      age: 4,
       interest: ($("#interest") && $("#interest").value || "").trim(),
       goal: $("#goal") && $("#goal").value || "",
       mood: $("#mood") && $("#mood").value || "",
@@ -1913,11 +1943,8 @@
 
   function validateForm() {
     var data = getFormData();
-    if (!Number.isFinite(data.age) && data.age !== 0) {
-      return { fieldId: "age", message: "سن کودک را انتخاب کن." };
-    }
     if (!data.interest) {
-      return { fieldId: "interest", message: "علاقه کودک را وارد کن." };
+      return { fieldId: "interest", message: "علاقه کودک فیلد ضروری است و باید پر شود." };
     }
     if (!data.goal) {
       return { fieldId: "goal", message: "هدف قصه را انتخاب کن." };
@@ -1925,10 +1952,21 @@
     if (!data.mood) {
       return { fieldId: "mood", message: "حال کودک را انتخاب کن." };
     }
-    if (!data.durationMinutes) {
-      return { fieldId: "durationMinutes", message: "مدت زمان قصه را انتخاب کن." };
+    if (!data.durationMinutes || data.durationMinutes < 1 || data.durationMinutes > 5) {
+      return { fieldId: "durationMinutes", message: "مدت زمان قصه را بین ۱ تا ۵ دقیقه انتخاب کن." };
     }
     return null;
+  }
+
+  function syncDurationRangeLabel() {
+    var input = $("#durationMinutes");
+    var label = $("#duration-range-value");
+    if (!input) return;
+    var value = Number(input.value) || 3;
+    var fa = formatQuotaUsageCount(value) + " دقیقه";
+    if (label) label.textContent = fa;
+    input.setAttribute("aria-valuenow", String(value));
+    input.setAttribute("aria-valuetext", fa);
   }
 
   function estimateReadingMinutes(text) {
@@ -1960,16 +1998,12 @@
   }
 
   function getEffectiveChildName() {
-    var fromForm = ($("#childName") && $("#childName").value || "").trim();
-    if (fromForm) return fromForm;
     var user = window.StorytellingAuth && window.StorytellingAuth.getUser();
     if (user && user.childName) return user.childName;
     return loadSavedChildName();
   }
 
   function applyChildNameToForm(name) {
-    var childNameInput = $("#childName");
-    if (childNameInput && name) childNameInput.value = name;
     saveChildName(name, false);
   }
 
@@ -2685,31 +2719,94 @@
   function createHistoryCard(item, options) {
     options = options || {};
     var card = document.createElement("article");
-    card.className = "history-card";
+    card.className = "history-card story-accordion";
     card.dataset.storyId = String(item.storyId || "");
-    card.innerHTML =
-      '<div class="history-card__main">' +
-        '<h4>' + (item.title || "قصه بدون عنوان") + '</h4>' +
-        '<p class="history-card__meta">' +
-          (item.durationMinutes || "—") + ' دقیقه · ' + getStorySourceLabel() +
-        '</p>' +
-        '<time class="history-card__date">' + formatPersianDate(item.savedAt) + '</time>' +
-      '</div>' +
-      '<div class="history-card__actions">' +
-        '<button type="button" class="btn btn--primary btn--sm history-restore">بازیابی</button>' +
-      '</div>';
+
+    var storyText = (item.story && item.story.storyText) || "";
+    var previewText = storyText.length > 180 ? storyText.slice(0, 180) + "…" : storyText;
+
+    var headerBtn = document.createElement("button");
+    headerBtn.type = "button";
+    headerBtn.className = "story-accordion__header";
+    headerBtn.setAttribute("aria-expanded", "false");
+
+    var titles = document.createElement("div");
+    titles.className = "story-accordion__titles";
+    var titleEl = document.createElement("h4");
+    titleEl.textContent = item.title || "قصه بدون عنوان";
+    var metaEl = document.createElement("p");
+    metaEl.className = "history-card__meta";
+    metaEl.textContent = (item.durationMinutes || "—") + " دقیقه · " + getStorySourceLabel();
+    var timeEl = document.createElement("time");
+    timeEl.className = "history-card__date";
+    timeEl.textContent = formatPersianDate(item.savedAt);
+    titles.appendChild(titleEl);
+    titles.appendChild(metaEl);
+    titles.appendChild(timeEl);
+
+    var chevron = document.createElement("span");
+    chevron.className = "story-accordion__chevron app-icon app-icon--sm";
+    chevron.setAttribute("data-icon", "chevronDown");
+    chevron.setAttribute("aria-hidden", "true");
+
+    headerBtn.appendChild(titles);
+    headerBtn.appendChild(chevron);
+
+    var body = document.createElement("div");
+    body.className = "story-accordion__body";
+    body.hidden = true;
+
+    var textEl = document.createElement("p");
+    textEl.className = "story-accordion__text";
+    textEl.textContent = previewText || "متن قصه در دسترس نیست.";
+
+    var actions = document.createElement("div");
+    actions.className = "story-accordion__actions";
+    actions.innerHTML =
+      '<button type="button" class="btn btn--primary btn--sm history-play" aria-label="پخش قصه">' +
+        '<span class="app-icon app-icon--sm" data-icon="play"></span> پخش' +
+      '</button>' +
+      '<button type="button" class="btn btn--ghost btn--sm history-download" aria-label="دانلود آفلاین">' +
+        '<span class="app-icon app-icon--sm" data-icon="download"></span> دانلود آفلاین' +
+      '</button>' +
+      '<button type="button" class="btn btn--ghost btn--sm history-restore">خواندن کامل</button>';
+
+    body.appendChild(textEl);
+    body.appendChild(actions);
+    card.appendChild(headerBtn);
+    card.appendChild(body);
+
+    headerBtn.addEventListener("click", function () {
+      var open = body.hidden;
+      body.hidden = !open;
+      headerBtn.setAttribute("aria-expanded", String(open));
+      card.classList.toggle("story-accordion--open", open);
+    });
+
+    var playBtn = card.querySelector(".history-play");
+    playBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      playHistoryItemInline(item, playBtn);
+    });
+
+    var downloadBtn = card.querySelector(".history-download");
+    downloadBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      downloadHistoryItemInline(item, downloadBtn);
+    });
+
     var restoreBtn = card.querySelector(".history-restore");
     restoreBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       restoreBtn.disabled = true;
-      restoreHistoryItem(item, { autoPlay: true }).then(function (restored) {
+      restoreHistoryItem(item, { autoPlay: false }).then(function (restored) {
         if (!restored) return;
         if (options.closeDrawer) closeHistoryDrawer();
         if (isMobileLayout()) setMobileTab("home");
-        var homeCard = $("#home-play-card");
-        if (homeCard && !homeCard.hidden) {
-          homeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
+        body.hidden = false;
+        headerBtn.setAttribute("aria-expanded", "true");
+        card.classList.add("story-accordion--open");
+        if (storyText) textEl.textContent = storyText;
       }).finally(function () {
         restoreBtn.disabled = false;
       });
@@ -2719,12 +2816,7 @@
 
   function updateClearHistoryButtons() {
     var hasHistory = state.history.length > 0;
-    var clearStories = $("#btn-clear-stories");
     var clearDrawer = $("#btn-clear-history");
-    if (clearStories) {
-      clearStories.disabled = !hasHistory;
-      clearStories.hidden = false;
-    }
     if (clearDrawer) {
       clearDrawer.disabled = !hasHistory;
       clearDrawer.hidden = false;
@@ -2805,12 +2897,13 @@
     if (item.formSnapshot) {
       var fs = item.formSnapshot;
       if (fs.childName) applyChildNameToForm(fs.childName);
-      ["interest", "extraContext", "age", "goal", "mood", "durationMinutes"].forEach(function (key) {
+      ["interest", "extraContext", "goal", "mood", "durationMinutes"].forEach(function (key) {
         var el = $("#" + key);
         if (el && fs[key] !== undefined && fs[key] !== null && fs[key] !== "") {
           el.value = String(fs[key]);
         }
       });
+      syncDurationRangeLabel();
       if (Number.isFinite(fs.age) || fs.age === 0) {
         state.storyResult.age = fs.age;
       }
@@ -2942,12 +3035,12 @@
     await refreshQuotaDisplay();
     if (isQuotaBlocked()) {
       var quotaMsg = getQuotaBlockedMessage();
+      openQuotaModal(quotaMsg);
       var quotaErrorEl = $("#form-error");
       if (quotaErrorEl) {
         quotaErrorEl.textContent = quotaMsg;
         quotaErrorEl.hidden = false;
       }
-      showToast(quotaMsg, "error");
       return;
     }
     var data = getFormData();
@@ -3020,7 +3113,7 @@
       stopCreateProgress();
       setCreateModalPhase("done");
       updateCreateProgressUI(100);
-      setCreateHint(audioReady ? "قصه و صدا آماده‌اند!" : "قصه ساخته شد. صدا در خانه قابل تلاش مجدد است.");
+      setCreateHint(audioReady ? "قصه و صدا آماده‌اند!" : "قصه ساخته شد. صدا در قصه‌های من قابل تلاش مجدد است.");
       await delayWithSignal(600, signal);
       if (signal.aborted) {
         await rollbackCancelledGeneration(activeGenerationStoryId, preGenerationStorySnapshot);
@@ -3030,10 +3123,13 @@
       if (isMobileLayout()) setMobileTab("home");
       updateCenterCardState();
       updateHomePlayCard();
-      if (audioReady) {
-        showToast("قصه و صدا در صفحه خانه آماده‌اند.", "success");
+      renderStoriesPanel();
+      if (isQuotaBlocked()) {
+        openQuotaModal(getQuotaBlockedMessage());
+      } else if (audioReady) {
+        showToast("قصه و صدا در «قصه‌های من» آماده‌اند.", "success");
       } else {
-        showToast("قصه ساخته شد. می‌توانی از بخش صدا دوباره تلاش کنی.", "info");
+        showToast("قصه ساخته شد. می‌توانی از بخش راوی دوباره تلاش کنی.", "info");
       }
     } catch (e) {
       if (e.name === "AbortError") {
@@ -3046,10 +3142,11 @@
       }
       var msg = "ساخت قصه ناموفق بود. لطفاً دوباره تلاش کن.";
       if (e.code === "QUOTA_DAILY_EXCEEDED" || e.code === "DEVICE_DAILY_LIMIT_EXCEEDED") {
-        msg = e.message || e.data?.error || msg;
+        msg = e.message || e.data?.error || getQuotaBlockedMessage();
         if (e.data && e.data.quota) {
           applyQuotaState(e.data.quota);
         }
+        openQuotaModal(msg);
       } else if (e.code === "STORY_GENERATION_FAILED") {
         msg = e.message || e.data?.error || msg;
       } else if (e.message === "Failed to fetch" || e.name === "TypeError") {
@@ -3057,7 +3154,9 @@
       } else if (e.message) {
         msg = e.message;
       }
-      showToast(msg, "error");
+      if (e.code !== "QUOTA_DAILY_EXCEEDED" && e.code !== "DEVICE_DAILY_LIMIT_EXCEEDED") {
+        showToast(msg, "error");
+      }
     } finally {
       storyGenerationAbort = null;
       activeGenerationStoryId = null;
@@ -3452,7 +3551,7 @@
       });
     }
 
-    ["age", "goal", "mood", "durationMinutes", "interest", "childName"].forEach(function (id) {
+    ["goal", "mood", "durationMinutes", "interest"].forEach(function (id) {
       var el = $("#" + id);
       if (el) el.addEventListener("change", function () {
         if (STORY_REQUIRED_FIELDS.indexOf(id) !== -1) {
@@ -3461,11 +3560,8 @@
             clearError();
           }
         }
+        if (id === "durationMinutes") syncDurationRangeLabel();
         updateSummaries();
-        if (id === "childName") {
-          saveChildName(el.value, false);
-          syncChildDisplay();
-        }
       });
       if (el) el.addEventListener("input", function () {
         if (STORY_REQUIRED_FIELDS.indexOf(id) !== -1) {
@@ -3474,18 +3570,12 @@
             clearError();
           }
         }
+        if (id === "durationMinutes") syncDurationRangeLabel();
         updateSummaries();
-        if (id === "childName") {
-          saveChildName(el.value, false);
-          syncChildDisplay();
-        }
       });
-      if (el && id === "childName") {
-        el.addEventListener("blur", function () {
-          saveChildName(el.value, true);
-        });
-      }
     });
+
+    syncDurationRangeLabel();
 
     var preview = $("#story-preview");
     if (preview) preview.addEventListener("input", updateCharCount);
@@ -3546,11 +3636,18 @@
     });
 
     $("#btn-history") && $("#btn-history").addEventListener("click", openHistoryDrawer);
-    $("#btn-settings") && $("#btn-settings").addEventListener("click", scrollToSettings);
+    $("#btn-settings") && $("#btn-settings").addEventListener("click", function () {
+      if (isMobileLayout()) setMobileTab("voice");
+      else scrollToSettings();
+    });
     $("#drawer-close") && $("#drawer-close").addEventListener("click", closeHistoryDrawer);
     $("#drawer-overlay") && $("#drawer-overlay").addEventListener("click", closeHistoryDrawer);
     $("#btn-clear-history") && $("#btn-clear-history").addEventListener("click", clearHistory);
-    $("#btn-clear-stories") && $("#btn-clear-stories").addEventListener("click", clearHistory);
+
+    $("#quota-modal-close") && $("#quota-modal-close").addEventListener("click", closeQuotaModal);
+    $$("[data-quota-close]").forEach(function (el) {
+      el.addEventListener("click", closeQuotaModal);
+    });
 
     $("#btn-primary-action") && $("#btn-primary-action").addEventListener("click", handlePrimaryAction);
     $("#btn-regenerate-audio") && $("#btn-regenerate-audio").addEventListener("click", function () {
@@ -3601,7 +3698,9 @@
     bindHomePlayTimelineControls();
 
     $("#btn-header-history") && $("#btn-header-history").addEventListener("click", openHistoryDrawer);
-    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", openHistoryDrawer);
+    $("#mobile-btn-history") && $("#mobile-btn-history").addEventListener("click", function () {
+      setMobileTab("home");
+    });
     $("#mobile-btn-logout") && $("#mobile-btn-logout").addEventListener("click", function () {
       if (window.StorytellingAuth) window.StorytellingAuth.logout();
     });
@@ -3722,8 +3821,16 @@
       bindStoryAudioPlaybackEvents();
       syncVoiceTaglines();
       renderVoiceCards();
+      try {
+        var initialTab = sessionStorage.getItem("storytelling_initial_tab");
+        if (initialTab) {
+          sessionStorage.removeItem("storytelling_initial_tab");
+          mobileTab = initialTab;
+        }
+      } catch (e) { /* ignore */ }
       if (isMobileLayout()) {
         document.body.setAttribute("data-mobile-tab", mobileTab);
+        setMobileTab(mobileTab);
       }
       setupStoryCreateScrollReveal();
       appInitDone = true;

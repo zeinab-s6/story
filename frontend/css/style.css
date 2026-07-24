@@ -1133,10 +1133,11 @@ input[type="range"]:focus-visible {
 
 .advanced-toggle__icon {
   flex-shrink: 0;
+  transition: transform 0.2s ease;
 }
 
 .advanced-toggle[aria-expanded="true"] .advanced-toggle__icon {
-  transform: none;
+  transform: rotate(180deg);
 }
 
 .advanced-body {
@@ -1144,6 +1145,10 @@ input[type="range"]:focus-visible {
   flex-direction: column;
   gap: 14px;
   padding-top: 10px;
+}
+
+.advanced-body[hidden] {
+  display: none !important;
 }
 
 .toggle-label {
@@ -1832,10 +1837,14 @@ body.app-shell .main > .panel {
 }
 
 body.app-shell[data-mobile-tab="home"] .story-hero {
-  display: block !important;
+  display: none !important;
 }
 
 body.app-shell[data-mobile-tab="home"] .panel--center {
+  display: none !important;
+}
+
+body.app-shell[data-mobile-tab="home"] .panel--stories {
   display: flex !important;
   flex-direction: column;
   min-width: 0;
@@ -1919,7 +1928,8 @@ body.app-shell[data-mobile-tab="profile"] .panel--profile {
   display: flex !important;
 }
 
-body.app-shell[data-mobile-tab="stories"] .panel--stories {
+body.app-shell[data-mobile-tab="stories"] .panel--stories,
+body.app-shell[data-mobile-tab="home"] .panel--stories {
   display: flex !important;
 }
 
@@ -2154,10 +2164,14 @@ body.app-shell .chip {
   }
 
   body[data-mobile-tab="home"] .story-hero {
-    display: block !important;
+    display: none !important;
   }
 
   body[data-mobile-tab="home"] .panel--center {
+    display: none !important;
+  }
+
+  body[data-mobile-tab="home"] .panel--stories {
     display: flex !important;
     flex-direction: column;
   }
@@ -2167,9 +2181,7 @@ body.app-shell .chip {
   }
 
   body[data-mobile-tab="home"] .home-footer {
-    flex-shrink: 0;
-    margin-top: auto;
-    padding-top: 12px;
+    display: none !important;
   }
 
   body[data-mobile-tab="story"] .panel--left {
@@ -2210,7 +2222,8 @@ body.app-shell .chip {
     display: flex !important;
   }
 
-  body[data-mobile-tab="stories"] .panel--stories {
+  body[data-mobile-tab="stories"] .panel--stories,
+  body[data-mobile-tab="home"] .panel--stories {
     display: flex !important;
   }
 
@@ -4061,6 +4074,169 @@ body.app-shell.drawer-open .app-frame {
   pointer-events: none;
   user-select: none;
 }
+
+/* Duration range (1–5 minutes) */
+.form-group--duration {
+  padding: 4px 0 8px;
+}
+
+.duration-range__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.duration-range__value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent, #c45c8a);
+  min-width: 4.5rem;
+  text-align: start;
+}
+
+.form-group--duration input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent, #c45c8a);
+  height: 28px;
+  cursor: pointer;
+}
+
+.duration-range__ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding-inline: 2px;
+}
+
+.required-mark {
+  color: #c62d32;
+  font-weight: 700;
+}
+
+/* Story accordion (قصه‌های من) */
+.story-accordion {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.story-accordion__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.story-accordion__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.story-accordion__titles h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.story-accordion__chevron {
+  flex-shrink: 0;
+  margin-top: 4px;
+  transition: transform 0.2s ease;
+}
+
+.story-accordion--open .story-accordion__chevron {
+  transform: rotate(180deg);
+}
+
+.story-accordion__body {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+}
+
+.story-accordion__body[hidden] {
+  display: none !important;
+}
+
+.story-accordion__text {
+  margin: 12px 0;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.story-accordion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.story-accordion__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Quota exhausted modal */
+.quota-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.quota-modal[hidden] {
+  display: none !important;
+}
+
+.quota-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 18, 28, 0.45);
+}
+
+.quota-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 340px);
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: var(--surface, #fff);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.quota-modal__title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.quota-modal__text {
+  margin: 0 0 18px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+body.quota-modal-open {
+  overflow: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -4076,3 +4252,4 @@ body.app-shell.drawer-open .app-frame {
     animation: none !important;
   }
 }
+

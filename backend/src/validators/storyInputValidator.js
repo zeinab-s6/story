@@ -1,7 +1,7 @@
 import { VALID_GOALS } from '../catalog/storyGoals.js';
 
 const VALID_MOODS = ['calm', 'angry', 'restless', 'sleepy', 'bored', 'sad', 'excited'];
-const VALID_DURATIONS = [2, 3, 5];
+const VALID_DURATIONS = [1, 2, 3, 4, 5];
 const MAX_BODY_KEYS = 20;
 
 const SCRIPT_PATTERN = /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi;
@@ -48,7 +48,7 @@ export function validateStoryInput(body) {
 
   const durationMinutes = Number(body.durationMinutes);
   if (!VALID_DURATIONS.includes(durationMinutes)) {
-    errors.push('مدت زمان باید ۲، ۳ یا ۵ دقیقه باشد.');
+    errors.push('مدت زمان باید بین ۱ تا ۵ دقیقه باشد.');
   }
 
   let childName = null;

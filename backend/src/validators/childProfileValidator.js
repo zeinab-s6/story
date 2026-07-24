@@ -14,6 +14,7 @@ function sanitizeString(value, maxLength) {
 export function validateChildProfileInput(body) {
   const childGender = body?.childGender?.trim().toLowerCase() || '';
   const hasChildName = body?.childName !== undefined && body?.childName !== null && body?.childName !== '';
+  const hasDisplayName = body?.displayName !== undefined && body?.displayName !== null && body?.displayName !== '';
 
   let childName = null;
   if (hasChildName) {
@@ -25,7 +26,15 @@ export function validateChildProfileInput(body) {
     childName = null;
   }
 
-  if (!childGender && body?.childName === undefined) {
+  let displayName = null;
+  if (hasDisplayName) {
+    displayName = sanitizeString(String(body.displayName), 60);
+    if (!displayName) {
+      return { valid: false, errors: ['نقش شما معتبر نیست.'] };
+    }
+  }
+
+  if (!childGender && body?.childName === undefined && body?.displayName === undefined) {
     return { valid: false, errors: ['حداقل یک فیلد برای به‌روزرسانی لازم است.'] };
   }
 
@@ -36,6 +45,7 @@ export function validateChildProfileInput(body) {
   const data = {};
   if (childGender) data.childGender = childGender;
   if (body?.childName !== undefined) data.childName = childName;
+  if (body?.displayName !== undefined) data.displayName = displayName;
 
   return { valid: true, data };
 }

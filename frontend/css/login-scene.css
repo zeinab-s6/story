@@ -350,8 +350,8 @@ body.login-page.login-page--night .login-night-hint {
 }
 
 .login-logo-ring {
-  width: 108px;
-  height: 108px;
+  width: 110px;
+  height: 110px;
   margin: 0 auto 14px;
   border-radius: 50%;
   overflow: hidden;
@@ -508,6 +508,19 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-otp-hint {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--login-muted);
+  line-height: 1.5;
 }
 
 .auth-error {

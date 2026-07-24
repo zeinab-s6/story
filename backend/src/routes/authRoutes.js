@@ -5,8 +5,8 @@ import { hashPassword, verifyPassword } from '../services/passwordService.js';
 import { signToken } from '../services/tokenService.js';
 import {
   createUser,
+  createOrGetUserByPhone,
   getUserByEmail,
-  getUserById,
   toPublicUser,
   updateUserChildProfile,
 } from '../repositories/userRepository.js';
@@ -20,6 +20,7 @@ import {
   assertDeviceAccountAccess,
   ensureDeviceAccountBinding,
 } from '../services/deviceBindingService.js';
+import { requestOtp, verifyOtpCode } from '../services/otpService.js';
 
 const router = Router();
 
@@ -71,6 +72,72 @@ function attachDeviceToUser(userId, deviceIdentity) {
     ...deviceIdentity,
   });
 }
+
+router.post('/otp/request', async (req, res) => {
+  const result = await requestOtp(req.body?.phone);
+
+  if (!result.ok) {
+    return res.status(result.status || 400).json({
+      success: false,
+      error: result.error,
+    });
+  }
+
+  return res.json({
+    success: true,
+    phone: result.phone,
+    expiresInSec: result.expiresInSec,
+    message: 'کد تأیید ارسال شد.',
+    ...(result.debugHint ? { debugHint: result.debugHint } : {}),
+  });
+});
+
+router.post('/otp/verify', (req, res) => {
+  const result = verifyOtpCode(req.body?.phone, req.body?.code);
+
+  if (!result.ok) {
+    return res.status(result.status || 400).json({
+      success: false,
+      error: result.error,
+    });
+  }
+
+  const deviceIdentity = resolveAuthDeviceIdentity(req.body);
+  const { user, created } = createOrGetUserByPhone(result.phone);
+
+  const deviceCheck = assertDeviceAccountAccess({
+    androidIdHash: deviceIdentity?.androidIdHash ?? extractAndroidIdHash(req.body),
+    userId: created ? null : user.id,
+    context: created ? 'register' : 'login',
+  });
+
+  if (!deviceCheck.allowed) {
+    return res.status(403).json({
+      success: false,
+      code: deviceCheck.code,
+      error: deviceCheck.error,
+    });
+  }
+
+  const token = signToken({ userId: user.id });
+  attachDeviceToUser(user.id, deviceIdentity);
+
+  const quota = deviceIdentity
+    ? getQuotaStatus({
+        userId: user.id,
+        ...deviceIdentity,
+      })
+    : null;
+
+  return res.status(created ? 201 : 200).json({
+    success: true,
+    token,
+    user: toPublicUser(user),
+    message: created ? 'حساب با موفقیت ساخته شد.' : 'خوش آمدید!',
+    created,
+    ...(quota && { quota }),
+  });
+});
 
 router.post('/register', (req, res) => {
   const validation = validateAuthInput(req.body, 'register');
@@ -260,13 +327,14 @@ router.patch('/child-profile', userAuth, (req, res) => {
     });
   }
 
-  const { childGender, childName } = validation.data;
+  const { childGender, childName, displayName } = validation.data;
   const childAvatarUrl = childGender ? getChildAvatarUrl(childGender) : undefined;
   const user = updateUserChildProfile({
     userId: req.user.id,
     childGender,
     childAvatarUrl,
     childName,
+    displayName,
   });
 
   return res.json({

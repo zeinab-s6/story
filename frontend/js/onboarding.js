@@ -17,11 +17,10 @@
   var submitHint = document.getElementById("onboarding-submit-hint");
   var previewImg = document.getElementById("onboarding-avatar-preview");
   var previewLabel = document.getElementById("onboarding-preview-label");
-  var parentNameEl = document.getElementById("onboarding-parent-name");
+  var roleInput = document.getElementById("onboarding-parent-role");
   var childNameInput = document.getElementById("onboarding-child-name");
 
-  var BRAND_SUBMIT_LABEL =
-    'ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>';
+  var SUBMIT_LABEL = "شروع قصه";
 
   function showError(msg) {
     if (!errorEl) return;
@@ -49,22 +48,28 @@
     });
   }
 
+  function isFormReady() {
+    var role = roleInput && roleInput.value.trim();
+    var childName = childNameInput && childNameInput.value.trim();
+    return !!(role && childName && getSelectedGenderInput());
+  }
+
   function updateSubmitState() {
-    var selected = getSelectedGenderInput();
-    if (submitBtn) submitBtn.disabled = !selected;
-    if (submitHint) submitHint.hidden = !!selected;
+    var ready = isFormReady();
+    if (submitBtn) submitBtn.disabled = !ready;
+    if (submitHint) submitHint.hidden = ready;
   }
 
   function setLoading(loading) {
     if (!submitBtn) return;
-    submitBtn.disabled = loading || !getSelectedGenderInput();
+    submitBtn.disabled = loading || !isFormReady();
     submitBtn.classList.toggle("btn--loading", loading);
-    if (submitHint) submitHint.hidden = loading || !!getSelectedGenderInput();
+    if (submitHint) submitHint.hidden = loading || isFormReady();
     if (loading) {
       submitBtn.textContent = "در حال ذخیره...";
       return;
     }
-    submitBtn.innerHTML = BRAND_SUBMIT_LABEL;
+    submitBtn.textContent = SUBMIT_LABEL;
     updateSubmitState();
   }
 
@@ -91,10 +96,10 @@
     updateSubmitState();
   }
 
-  function initParentName() {
+  function initRoleFromUser() {
     var user = window.StorytellingAuth && window.StorytellingAuth.getUser();
-    if (parentNameEl && user && user.displayName) {
-      parentNameEl.textContent = user.displayName;
+    if (roleInput && user && user.displayName && user.displayName !== "والد") {
+      roleInput.value = user.displayName;
     }
   }
 
@@ -126,6 +131,10 @@
     });
   }
 
+  if (roleInput) {
+    roleInput.addEventListener("input", updateSubmitState);
+  }
+
   if (childNameInput) {
     childNameInput.addEventListener("input", function () {
       var selected = getSelectedGenderInput();
@@ -134,6 +143,7 @@
         var name = childNameInput.value.trim();
         previewLabel.textContent = name || "یک گزینه را انتخاب کن";
       }
+      updateSubmitState();
     });
   }
 
@@ -149,26 +159,38 @@
         return;
       }
 
+      var role = roleInput && roleInput.value.trim();
+      var childName = childNameInput && childNameInput.value.trim();
       var selected = getSelectedGenderInput();
+
+      if (!role) {
+        showError("نقش خود را در مقابل فرزند بنویس.");
+        return;
+      }
+      if (!childName) {
+        showError("نام کودک را وارد کن.");
+        return;
+      }
       if (!selected) {
-        showError("لطفاً جنسیت فرزند را انتخاب کن.");
+        showError("لطفاً جنسیت و آواتار کودک را انتخاب کن.");
         if (submitHint) submitHint.hidden = false;
         return;
       }
 
-      var payload = { childGender: selected.value };
-      var childName = childNameInput && childNameInput.value.trim();
-      if (childName) payload.childName = childName;
+      var payload = {
+        displayName: role,
+        childName: childName,
+        childGender: selected.value,
+      };
 
       setLoading(true);
       try {
         var result = await window.StorytellingAPI.updateChildProfile(payload);
         if (result.user) {
           window.StorytellingAuth.updateUser(result.user);
-          if (childName) {
-            try { localStorage.setItem("storytelling_child_name", childName); } catch (err) { /* ignore */ }
-          }
+          try { localStorage.setItem("storytelling_child_name", childName); } catch (err) { /* ignore */ }
         }
+        try { sessionStorage.setItem("storytelling_initial_tab", "story"); } catch (err) { /* ignore */ }
         window.location.replace("/home");
       } catch (err) {
         if (err.status === 401) {
@@ -191,7 +213,7 @@
   if (!hasValidLocalSession()) {
     redirectToLogin();
   } else {
-    initParentName();
+    initRoleFromUser();
     syncGenderCardVisuals();
     updateSubmitState();
   }

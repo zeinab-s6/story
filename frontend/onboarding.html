@@ -27,9 +27,8 @@
   <main class="onboarding-shell">
     <header class="onboarding-header">
       <div class="onboarding-logo brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></div>
-      <p class="onboarding-welcome">سلام <strong id="onboarding-parent-name">والد</strong></p>
-      <h1 class="onboarding-title">فرزندت رو بشناسیم</h1>
-      <p class="onboarding-subtitle">جنسیت و نام فرزند را وارد کن تا آواتار مخصوصش در داشبورد نمایش داده شود.</p>
+      <h1 class="onboarding-title">قصه‌ات را شروع کن</h1>
+      <p class="onboarding-subtitle">نقش خودت، نام کودک و آواتار را مشخص کن تا قصه‌سازی آماده شود.</p>
     </header>
 
     <div class="onboarding-preview" id="onboarding-preview">
@@ -41,11 +40,16 @@
 
     <form class="onboarding-form" id="onboarding-form" novalidate>
       <div class="form-group onboarding-name-group">
-        <label for="onboarding-child-name">نام فرزند</label>
-        <input type="text" id="onboarding-child-name" name="childName" placeholder="مثلاً ستاره" autocomplete="off" maxlength="40">
+        <label for="onboarding-parent-role">نقش شما در مقابل فرزند</label>
+        <input type="text" id="onboarding-parent-role" name="displayName" placeholder="مثلاً مامان، بابا، خاله" autocomplete="name" maxlength="60" required>
       </div>
 
-      <div class="gender-picker" role="radiogroup" aria-label="جنسیت و آواتار فرزند">
+      <div class="form-group onboarding-name-group">
+        <label for="onboarding-child-name">نام کودک</label>
+        <input type="text" id="onboarding-child-name" name="childName" placeholder="مثلاً ستاره" autocomplete="off" maxlength="40" required>
+      </div>
+
+      <div class="gender-picker" role="radiogroup" aria-label="جنسیت و آواتار کودک">
         <label class="gender-card" tabindex="0">
           <input type="radio" name="childGender" value="boy" required>
           <span class="gender-card__inner">
@@ -68,10 +72,10 @@
 
       <p class="onboarding-error" id="onboarding-error" hidden role="alert"></p>
 
-      <p class="onboarding-submit-hint" id="onboarding-submit-hint">برای فعال شدن دکمه، اول «پسر» یا «دختر» را انتخاب کن.</p>
+      <p class="onboarding-submit-hint" id="onboarding-submit-hint">نقش، نام کودک و آواتار را کامل کن.</p>
 
       <button type="submit" class="btn btn--primary btn--full onboarding-submit" id="onboarding-submit" disabled aria-describedby="onboarding-submit-hint">
-        ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>
+        شروع قصه
       </button>
     </form>
   </main>
