@@ -192,7 +192,7 @@
   }
 
   async function previewVoice(voice, format, text, options) {
-    var body = { voice: voice, format: format || "wav" };
+    var body = { voice: voice, format: format || "mp3" };
     if (text) body.text = text;
     if (options && options.backgroundAmbience) body.backgroundAmbience = true;
     return request(apiUrl("/api/voices/preview"), {
