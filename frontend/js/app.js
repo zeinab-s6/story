@@ -2804,20 +2804,38 @@
     });
 
     var restoreBtn = card.querySelector(".history-restore");
+    var isFullText = false;
     restoreBtn.addEventListener("click", function (e) {
       e.stopPropagation();
-      restoreBtn.disabled = true;
-      restoreHistoryItem(item, { autoPlay: false }).then(function (restored) {
-        if (!restored) return;
-        if (options.closeDrawer) closeHistoryDrawer();
-        if (isMobileLayout()) setMobileTab("home");
-        body.hidden = false;
-        headerBtn.setAttribute("aria-expanded", "true");
-        card.classList.add("story-accordion--open");
-        if (storyText) textEl.textContent = storyText;
-      }).finally(function () {
-        restoreBtn.disabled = false;
-      });
+      body.hidden = false;
+      headerBtn.setAttribute("aria-expanded", "true");
+      card.classList.add("story-accordion--open");
+
+      var fullText = storyText;
+      if (!fullText && item.story) {
+        fullText = item.story.storyText || item.story.parentIntro || "";
+      }
+      if (!fullText) {
+        textEl.textContent = "متن قصه در دسترس نیست.";
+        return;
+      }
+
+      if (isFullText) {
+        textEl.textContent = previewText || fullText;
+        restoreBtn.textContent = "خواندن کامل";
+        isFullText = false;
+        return;
+      }
+
+      var parts = [];
+      if (item.story && item.story.parentIntro) {
+        parts.push(item.story.parentIntro);
+      }
+      parts.push(fullText);
+      textEl.textContent = parts.join("\n\n");
+      restoreBtn.textContent = "نمایش خلاصه";
+      isFullText = true;
+      textEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     return card;
   }

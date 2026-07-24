@@ -4203,8 +4203,9 @@ body.app-shell.drawer-open .app-frame {
   margin: 12px 0;
   font-size: 0.88rem;
   line-height: 1.7;
-  color: var(--muted);
+  color: var(--text, inherit);
   white-space: pre-wrap;
+  max-height: none;
 }
 
 .story-accordion__actions {
