@@ -1856,6 +1856,17 @@ body.app-shell[data-mobile-tab="home"] .panel--stories {
   width: 100%;
 }
 
+body.app-shell[data-mobile-tab="home"] .panel--stories .home-play-card:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 12px;
+}
+
+body.app-shell[data-mobile-tab="home"] .panel--stories .home-footer:not([hidden]) {
+  display: block;
+  margin: 0 0 12px;
+}
+
 body.app-shell[data-mobile-tab="home"] .panel--center .center-card {
   flex: 1 1 auto;
   display: flex;
@@ -2181,12 +2192,16 @@ body.app-shell .chip {
     flex-direction: column;
   }
 
-  body[data-mobile-tab="home"] .panel--center .center-card {
-    flex: 1 1 auto;
+  body[data-mobile-tab="home"] .panel--stories .home-play-card:not([hidden]) {
+    display: flex !important;
   }
 
-  body[data-mobile-tab="home"] .home-footer {
-    display: none !important;
+  body[data-mobile-tab="home"] .panel--stories .home-footer:not([hidden]) {
+    display: block !important;
+  }
+
+  body[data-mobile-tab="home"] .panel--center .center-card {
+    flex: 1 1 auto;
   }
 
   body[data-mobile-tab="story"] .panel--left {
@@ -4037,27 +4052,16 @@ body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-block--mai
 }
 
 body.app-shell[data-mobile-tab="home"] .home-play-card {
-  margin-top: auto;
+  margin-top: 0;
 }
 
-body[data-mobile-tab="home"] .panel--center {
-  display: flex !important;
-  flex-direction: column;
-  min-width: 0;
-  width: 100%;
-}
-
-body[data-mobile-tab="home"] .center-card--has-story .story-section--highlight {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-section--highlight {
   min-width: 0;
 }
 
-body[data-mobile-tab="home"] .center-card--has-story .story-block--main {
+body.app-shell[data-mobile-tab="home"] .center-card--has-story .story-block--main {
   overflow-wrap: anywhere;
   word-break: break-word;
-}
-
-body[data-mobile-tab="home"] .home-play-card {
-  margin-top: auto;
 }
 
 @media (max-width: 480px) {
@@ -4219,11 +4223,24 @@ body.app-shell.drawer-open .app-frame {
   gap: 12px;
 }
 
+.story-accordion__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .story-accordion__actions .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   align-self: flex-start;
+}
+
+.btn--quota-blocked {
+  opacity: 0.72;
+  box-shadow: none;
+  filter: grayscale(0.15);
 }
 
 .story-play-scrubber {

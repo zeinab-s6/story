@@ -207,45 +207,8 @@
             <p id="story-text" class="story-block story-block--main">—</p>
           </div>
 
-          <div class="home-play-card" id="home-play-card" hidden>
-            <div class="home-play-card__main">
-              <div class="home-play-card__actions">
-                <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
-                  <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
-                </button>
-              </div>
-              <div class="home-play-card__body">
-                <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
-                <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
-              </div>
-            </div>
-            <div class="home-play-card__timeline" id="home-play-timeline">
-              <input
-                type="range"
-                class="home-play-card__seek"
-                id="home-play-seek"
-                min="0"
-                max="1000"
-                value="0"
-                step="1"
-                aria-label="جابه‌جایی در قصه"
-                aria-valuemin="0"
-                aria-valuemax="1000"
-                aria-valuenow="0"
-              >
-              <div class="home-play-card__times" aria-hidden="true">
-                <span class="home-play-card__time" id="home-play-time-current">۰:۰۰</span>
-                <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
-              </div>
-            </div>
-          </div>
-
           <div id="audio-player-wrap" class="audio-player-wrap" hidden></div>
         </article>
-      </div>
-
-      <div class="home-footer" id="home-footer" hidden>
-        <button type="button" class="btn btn--primary btn--full home-story-cta" id="btn-home-go-story">رفتن به بخش قصه</button>
       </div>
     </section>
 
@@ -254,10 +217,51 @@
       <section class="stories-banner" aria-hidden="true">
         <img class="stories-banner__img" src="images/banner-background.jpg" alt="" decoding="async">
       </section>
+
+      <div class="home-play-card" id="home-play-card" hidden>
+        <div class="home-play-card__main">
+          <div class="home-play-card__actions">
+            <button type="button" class="home-play-card__play" id="btn-home-play" aria-label="پخش قصه">
+              <span class="home-play-card__play-icon app-icon app-icon--md" data-icon="play" id="home-play-icon"></span>
+            </button>
+            <button type="button" class="home-play-card__download" id="btn-home-download" aria-label="دانلود قصه" disabled>
+              <span class="home-play-card__download-icon app-icon app-icon--sm" data-icon="download"></span>
+            </button>
+          </div>
+          <div class="home-play-card__body">
+            <h3 class="home-play-card__title" id="home-play-title">قصه آماده است</h3>
+            <p class="home-play-card__meta" id="home-play-meta">برای گوش دادن بزن</p>
+          </div>
+        </div>
+        <div class="home-play-card__timeline" id="home-play-timeline">
+          <input
+            type="range"
+            class="home-play-card__seek"
+            id="home-play-seek"
+            min="0"
+            max="1000"
+            value="0"
+            step="1"
+            aria-label="جابه‌جایی در قصه"
+            aria-valuemin="0"
+            aria-valuemax="1000"
+            aria-valuenow="0"
+          >
+          <div class="home-play-card__times" aria-hidden="true">
+            <span class="home-play-card__time" id="home-play-time-current">۰:۰۰</span>
+            <span class="home-play-card__time" id="home-play-time-duration">۰:۰۰</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="home-footer" id="home-footer" hidden>
+        <button type="button" class="btn btn--primary btn--full home-story-cta" id="btn-home-go-story">رفتن به بخش قصه</button>
+      </div>
+
       <section class="card glass">
         <div class="card__header">
           <h2 class="card__title">قصه‌های من</h2>
-          <p class="card__subtitle">قصه‌های ساخته‌شده را اینجا بخوان یا پخش کن.</p>
+          <p class="card__subtitle">قصه‌های ساخته‌شده را اینجا بخوان، پخش یا دانلود کن.</p>
         </div>
         <p class="stories-empty" id="stories-empty">هنوز قصه‌ای ساخته نشده. اولین قصه را بساز تا اینجا نمایش داده شود.</p>
         <div class="history-list stories-accordion" id="stories-list"></div>
@@ -269,7 +273,7 @@
       <section class="card glass">
         <div class="card__header">
           <h2 class="card__title">راوی</h2>
-          <p class="card__subtitle" id="voice-settings-subtitle">سرعت و لحن را تنظیم کن؛ برای قصه، تیک پس‌زمینه را فقط هنگام ساخت بزن.</p>
+          <p class="card__subtitle" id="voice-settings-subtitle">سرعت، لحن و تنظیمات پیشرفته را تغییر بده؛ روی پیش‌نمایش راوی فوری اعمال می‌شود و برای قصه هنگام ساخت صدا لحاظ می‌شود.</p>
           <p class="voice-mode-status" id="voice-mode-status" hidden></p>
         </div>
 

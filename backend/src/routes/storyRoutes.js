@@ -288,7 +288,7 @@ router.post('/:id/audio', optionalUserAuth, async (req, res, next) => {
     return denyStoryAccess(res);
   }
 
-  const { voiceProfileId, voice, format, narrationText, backgroundAmbience } = req.body ?? {};
+  const { voiceProfileId, voice, format, narrationText, backgroundAmbience, speed } = req.body ?? {};
   let voiceProfile = null;
 
   if (voiceProfileId !== undefined && voiceProfileId !== null) {
@@ -324,6 +324,7 @@ router.post('/:id/audio', optionalUserAuth, async (req, res, next) => {
       format: format || env.OPENAI_TTS_FORMAT,
       narrationTextOverride: narrationText,
       backgroundAmbience: backgroundAmbience === true,
+      speed,
     });
 
     const savedAudio = saveStoryAudio({

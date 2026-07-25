@@ -131,6 +131,7 @@ export async function generateStoryAudioWithOpenAI({
   voice,
   format,
   isCustomVoice = false,
+  speed,
 }) {
   if (!env.OPENAI_API_KEY?.trim() && !env.OPENAI_TTS_API_KEY?.trim()) {
     const error = new Error('کلید API اوپن‌ای‌آی تنظیم نشده است.');
@@ -160,15 +161,23 @@ export async function generateStoryAudioWithOpenAI({
 
   let lastError;
   let usedModel = env.OPENAI_TTS_MODEL;
+  const parsedSpeed = Number(speed);
+  const speechSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0
+    ? Math.min(4, Math.max(0.25, parsedSpeed))
+    : undefined;
 
   for (const model of modelCandidates) {
     try {
-      const response = await client.audio.speech.create({
+      const payload = {
         model,
         voice: resolvedVoice,
         input: narrationText,
         response_format: normalizedFormat,
-      });
+      };
+      if (speechSpeed != null) {
+        payload.speed = speechSpeed;
+      }
+      const response = await client.audio.speech.create(payload);
 
       const audioPath = await saveOpenAIResponseToFile(response, normalizedFormat);
 
@@ -242,6 +251,7 @@ async function generateWithIviraOrFallback({
   voice,
   format,
   openaiVoice,
+  speed,
 }) {
   let iviraErr;
   try {
@@ -249,6 +259,7 @@ async function generateWithIviraOrFallback({
       narrationText,
       voice,
       format,
+      speed,
     });
   } catch (err) {
     iviraErr = err;
@@ -262,6 +273,7 @@ async function generateWithIviraOrFallback({
       narrationText,
       voice: openaiVoice || env.OPENAI_TTS_VOICE,
       format,
+      speed,
     });
 
     return {
@@ -341,6 +353,7 @@ export async function generateStoryAudio({
   format,
   narrationTextOverride,
   backgroundAmbience = false,
+  speed,
 }) {
   const narrationText = typeof narrationTextOverride === 'string' && narrationTextOverride.trim()
     ? extractStoryTextForNarration(story, narrationTextOverride.trim())
@@ -365,6 +378,7 @@ export async function generateStoryAudio({
         narrationText,
         voice,
         format: normalizedFormat,
+        speed,
       });
 
       return applyBackgroundAmbienceIfRequested({
@@ -434,6 +448,7 @@ export async function generateStoryAudio({
       voice,
       format: normalizedFormat,
       isCustomVoice: voiceType === 'custom',
+      speed,
     });
 
     return applyBackgroundAmbienceIfRequested({
@@ -456,6 +471,7 @@ export async function generateStoryAudio({
         voice: builtinFallbackVoice,
         format: normalizedFormat,
         isCustomVoice: false,
+        speed,
       });
 
       return applyBackgroundAmbienceIfRequested({
