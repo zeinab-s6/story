@@ -53,7 +53,8 @@ router.post('/preview', userAuth, async (req, res, next) => {
     const format = req.body?.format || env.OPENAI_TTS_FORMAT || 'mp3';
     const text = req.body?.text;
     const backgroundAmbience = req.body?.backgroundAmbience === true;
-    const result = await generateVoicePreview({ voice, format, text, backgroundAmbience });
+    const speed = req.body?.speed;
+    const result = await generateVoicePreview({ voice, format, text, backgroundAmbience, speed });
 
     return res.json({
       success: true,
@@ -61,6 +62,7 @@ router.post('/preview', userAuth, async (req, res, next) => {
         voice: result.voice,
         format: result.format,
         provider: result.provider,
+        model: result.model,
         audioUrl: result.audioUrl,
         backgroundAmbienceApplied: result.backgroundAmbienceApplied === true,
       },

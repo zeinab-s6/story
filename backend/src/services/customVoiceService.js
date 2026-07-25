@@ -33,6 +33,7 @@ function buildVoiceTagline() {
 export function getAvailableVoiceMode() {
   const isElevenLabs = env.TTS_PROVIDER === 'elevenlabs';
   const isIvira = env.TTS_PROVIDER === 'ivira';
+  const openaiDefaultVoice = resolveBuiltinVoice(env.OPENAI_TTS_VOICE, 'nova');
 
   return {
     ttsProvider: env.TTS_PROVIDER,
@@ -41,7 +42,7 @@ export function getAvailableVoiceMode() {
       ? env.ELEVENLABS_VOICE_ID
       : isIvira
         ? speakerIdToLabel(env.IVIRA_SPEAKER)
-        : env.OPENAI_TTS_VOICE,
+        : openaiDefaultVoice,
     ttsModel: isElevenLabs
       ? env.ELEVENLABS_MODEL_ID
       : isIvira
@@ -57,9 +58,10 @@ export function getAvailableVoiceMode() {
       ? 'If custom voice is unavailable, built-in ElevenLabs voices will be used.'
       : isIvira
         ? 'Persian voices from Ivira Avasho are used for narration.'
-        : 'If custom voice is unavailable, built-in OpenAI voices will be used.',
+      : 'OpenAI TTS (/v1/audio/speech) with built-in voices.',
     storyProvider: env.STORY_PROVIDER,
     openaiBaseUrl: env.OPENAI_BASE_URL || null,
+    openaiTtsBaseUrl: env.OPENAI_TTS_BASE_URL || env.OPENAI_BASE_URL || null,
     voiceTagline: buildVoiceTagline(),
   };
 }

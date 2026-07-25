@@ -195,6 +195,7 @@
     var body = { voice: voice, format: format || "mp3" };
     if (text) body.text = text;
     if (options && options.backgroundAmbience) body.backgroundAmbience = true;
+    if (options && options.speed != null) body.speed = Number(options.speed);
     return request(apiUrl("/api/voices/preview"), {
       method: "POST",
       body: JSON.stringify(body),

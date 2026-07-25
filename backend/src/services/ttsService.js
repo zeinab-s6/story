@@ -77,6 +77,12 @@ async function saveOpenAIResponseToFile(response, format) {
   const filename = createSafeAudioFilename('story', format);
   const audioPath = getAudioStoragePath(filename);
   const buffer = Buffer.from(await response.arrayBuffer());
+  if (!buffer.length || buffer.length < 64) {
+    const error = new Error('پاسخ OpenAI TTS فاقد داده صوتی معتبر بود.');
+    error.statusCode = 502;
+    error.code = 'OPENAI_TTS_EMPTY_AUDIO';
+    throw error;
+  }
   fs.writeFileSync(audioPath, buffer);
   return audioPath;
 }
@@ -139,14 +145,23 @@ export async function generateStoryAudioWithOpenAI({
     throw error;
   }
 
+  const transcript = String(narrationText || '').trim();
+  if (!transcript) {
+    const error = new Error('متن روایت برای تولید صدا خالی است.');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const normalizedFormat = normalizeFormat(format);
   const resolvedVoice = isCustomVoice
     ? voice
     : resolveBuiltinVoice(voice, env.OPENAI_TTS_VOICE);
 
-  if (isGeminiTtsModel()) {
+  // Only Gemini GapGPT chat-audio models use the alternate path.
+  // Standard OpenAI TTS always goes through POST /v1/audio/speech.
+  if (isGeminiTtsModel(env.OPENAI_TTS_MODEL)) {
     return generateStoryAudioWithGapGptGemini({
-      narrationText,
+      narrationText: transcript,
       voice: resolvedVoice,
     });
   }
@@ -155,12 +170,12 @@ export async function generateStoryAudioWithOpenAI({
 
   const modelCandidates = [
     env.OPENAI_TTS_MODEL,
+    'gpt-4o-mini-tts',
     'tts-1',
     'tts-1-hd',
-  ].filter((model, index, list) => model && list.indexOf(model) === index);
+  ].filter((model, index, list) => model && list.indexOf(model) === index && !isGeminiTtsModel(model));
 
   let lastError;
-  let usedModel = env.OPENAI_TTS_MODEL;
   const parsedSpeed = Number(speed);
   const speechSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0
     ? Math.min(4, Math.max(0.25, parsedSpeed))
@@ -171,14 +186,14 @@ export async function generateStoryAudioWithOpenAI({
       const payload = {
         model,
         voice: resolvedVoice,
-        input: narrationText,
+        input: transcript,
         response_format: normalizedFormat,
       };
       if (speechSpeed != null) {
         payload.speed = speechSpeed;
       }
-      const response = await client.audio.speech.create(payload);
 
+      const response = await client.audio.speech.create(payload);
       const audioPath = await saveOpenAIResponseToFile(response, normalizedFormat);
 
       return {
@@ -191,18 +206,25 @@ export async function generateStoryAudioWithOpenAI({
       };
     } catch (err) {
       lastError = err;
+      if (env.isDevelopment || env.LOG_LEVEL === 'debug') {
+        console.warn('[openai-tts]', model, err?.status || err?.code || '', err?.message || err);
+      }
     }
   }
 
   const isRateLimit = lastError?.status === 429 || lastError?.code === 'api_limit';
+  const providerMessage = lastError?.error?.message || lastError?.message;
   const error = new Error(
     isRateLimit
-      ? 'سقف درخواست TTS در GapGPT پر شده. کمی بعد دوباره تلاش کنید.'
-      : 'خطا در تولید صدا با OpenAI TTS. لطفاً دوباره تلاش کنید.',
+      ? 'سقف درخواست TTS پر شده. کمی بعد دوباره تلاش کنید.'
+      : (providerMessage
+        ? `خطا در تولید صدا با OpenAI TTS: ${providerMessage}`
+        : 'خطا در تولید صدا با OpenAI TTS. لطفاً دوباره تلاش کنید.'),
   );
-  error.statusCode = isRateLimit ? 429 : 502;
-  if (env.isDevelopment) {
-    error.details = lastError?.message;
+  error.statusCode = isRateLimit ? 429 : (lastError?.statusCode || lastError?.status || 502);
+  error.code = lastError?.code || 'OPENAI_TTS_FAILED';
+  if (!env.isProduction || env.isDevelopment) {
+    error.details = providerMessage || lastError?.message;
   }
   throw error;
 }
@@ -291,7 +313,7 @@ async function generateWithIviraOrFallback({
   }
 }
 
-export async function generateVoicePreview({ voice, format = 'mp3', text, backgroundAmbience = false }) {
+export async function generateVoicePreview({ voice, format = 'mp3', text, backgroundAmbience = false, speed }) {
   const normalizedFormat = normalizeFormat(format);
   const narrationText = typeof text === 'string' && text.trim()
     ? text.trim()
@@ -313,6 +335,7 @@ export async function generateVoicePreview({ voice, format = 'mp3', text, backgr
         narrationText,
         voice,
         format: normalizedFormat,
+        speed,
       });
       const mixed = await applyBackgroundAmbienceIfRequested(iviraResult, backgroundAmbience);
       const filename = path.basename(mixed.audioPath);
@@ -332,10 +355,27 @@ export async function generateVoicePreview({ voice, format = 'mp3', text, backgr
     }
   }
 
+  if (env.TTS_PROVIDER === 'elevenlabs') {
+    const elevenLabsResult = await generateStoryAudioWithElevenLabs({
+      narrationText,
+      voice,
+      format: normalizedFormat,
+      isCustomVoice: false,
+    });
+    const mixed = await applyBackgroundAmbienceIfRequested(elevenLabsResult, backgroundAmbience);
+    const filename = path.basename(mixed.audioPath);
+    return {
+      ...mixed,
+      audioUrl: `/api/voices/preview-file/${filename}`,
+    };
+  }
+
+  // TTS_PROVIDER=openai → OpenAI-compatible /v1/audio/speech
   const openaiResult = await generateStoryAudioWithOpenAI({
     narrationText,
     voice,
     format: normalizedFormat,
+    speed,
   });
   const mixed = await applyBackgroundAmbienceIfRequested(openaiResult, backgroundAmbience);
   const filename = path.basename(mixed.audioPath);
