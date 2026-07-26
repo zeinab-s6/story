@@ -27,7 +27,7 @@ function getCustomVoiceCreateFn(client) {
 }
 
 function buildVoiceTagline() {
-  return 'صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.';
+  return 'صدای راوی مورد نظر را انتخاب کنید.';
 }
 
 export function getAvailableVoiceMode() {

@@ -163,16 +163,33 @@ export async function synthesizeWithGapGptGeminiTts({
     throw error;
   }
 
-  const pcmBuffer = Buffer.from(audioData, 'base64');
-  const wavBuffer = pcmToWav(pcmBuffer);
+  // GapGPT may return mp3, wav, or raw PCM depending on model/proxy — detect before wrapping.
+  const decoded = decodeGapGptAudioPayload(audioData);
 
   return {
-    audioBuffer: wavBuffer,
+    audioBuffer: decoded.audioBuffer,
     model,
     voice: geminiVoice,
-    format: 'wav',
+    format: decoded.format,
     provider: 'gapgpt-gemini',
   };
+}
+
+function decodeGapGptAudioPayload(audioData) {
+  const decoded = Buffer.from(audioData, 'base64');
+
+  if (decoded.length >= 3 && decoded.toString('ascii', 0, 3) === 'ID3') {
+    return { audioBuffer: decoded, format: 'mp3' };
+  }
+  if (decoded.length >= 2 && decoded[0] === 0xff && (decoded[1] & 0xe0) === 0xe0) {
+    return { audioBuffer: decoded, format: 'mp3' };
+  }
+  if (decoded.length >= 12 && decoded.toString('ascii', 0, 4) === 'RIFF') {
+    return { audioBuffer: decoded, format: 'wav' };
+  }
+
+  // Headerless PCM (common for Gemini TTS) → valid WAV for browser playback.
+  return { audioBuffer: pcmToWav(decoded), format: 'wav' };
 }
 
 export default {

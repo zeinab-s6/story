@@ -5,7 +5,7 @@
   const mockFrontendMode = false;
 
   const STORY_AUDIO_FORMAT = "mp3";
-  const VOICE_TAGLINE_FALLBACK = "صدای مورد نظر را از بخش کتابخانه صدا انتخاب کنید.";
+  const VOICE_TAGLINE_FALLBACK = "صدای راوی مورد نظر را انتخاب کنید.";
 
   const STORAGE_KEYS = {
     sessionId: "storytelling_session_id",
