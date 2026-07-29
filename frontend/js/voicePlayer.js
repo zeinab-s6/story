@@ -12,6 +12,8 @@
   var onStateChange = null;
   var backgroundSourceNode = null;
   var backgroundGainNode = null;
+  var unlockKeepaliveOsc = null;
+  var unlockKeepaliveGain = null;
 
   var BACKGROUND_AUDIO_URL = "images/audio/source.mp3";
   var BACKGROUND_AUDIO_VOLUME = 0.14;
@@ -23,6 +25,44 @@
       audioContext = new Ctx();
     }
     return audioContext;
+  }
+
+  /**
+   * Must be called synchronously inside a user gesture (click/tap)
+   * before any await/network work, so autoplay policy unlocks Web Audio.
+   * Starts a silent oscillator so the context stays running across long TTS waits.
+   */
+  function unlock() {
+    var ctx = getContext();
+    if (!ctx) return Promise.resolve(false);
+
+    function startKeepalive() {
+      if (unlockKeepaliveOsc) return;
+      try {
+        unlockKeepaliveOsc = ctx.createOscillator();
+        unlockKeepaliveGain = ctx.createGain();
+        unlockKeepaliveGain.gain.value = 0.0001;
+        unlockKeepaliveOsc.frequency.value = 440;
+        unlockKeepaliveOsc.connect(unlockKeepaliveGain);
+        unlockKeepaliveGain.connect(ctx.destination);
+        unlockKeepaliveOsc.start(0);
+      } catch (e) {
+        unlockKeepaliveOsc = null;
+        unlockKeepaliveGain = null;
+      }
+    }
+
+    startKeepalive();
+
+    if (ctx.state === "suspended" || ctx.state === "interrupted") {
+      return ctx.resume().then(function () {
+        startKeepalive();
+        return ctx.state === "running";
+      }).catch(function () {
+        return false;
+      });
+    }
+    return Promise.resolve(ctx.state === "running");
   }
 
   function settingsToParams(settings) {
@@ -97,16 +137,21 @@
 
   function startBackgroundAmbience(ctx) {
     stopBackgroundAmbience();
-    return loadBuffer(BACKGROUND_AUDIO_URL).then(function (buffer) {
-      backgroundSourceNode = ctx.createBufferSource();
-      backgroundGainNode = ctx.createGain();
-      backgroundSourceNode.buffer = buffer;
-      backgroundSourceNode.loop = true;
-      backgroundGainNode.gain.value = BACKGROUND_AUDIO_VOLUME;
-      backgroundSourceNode.connect(backgroundGainNode);
-      backgroundGainNode.connect(ctx.destination);
-      backgroundSourceNode.start(0);
-    });
+    return loadBuffer(BACKGROUND_AUDIO_URL)
+      .then(function (buffer) {
+        backgroundSourceNode = ctx.createBufferSource();
+        backgroundGainNode = ctx.createGain();
+        backgroundSourceNode.buffer = buffer;
+        backgroundSourceNode.loop = true;
+        backgroundGainNode.gain.value = BACKGROUND_AUDIO_VOLUME;
+        backgroundSourceNode.connect(backgroundGainNode);
+        backgroundGainNode.connect(ctx.destination);
+        backgroundSourceNode.start(0);
+      })
+      .catch(function (err) {
+        // Ambience is optional; missing assets must not block narrator/story play.
+        console.warn("[VoicePlayer] background ambience skipped", err);
+      });
   }
 
   function wantsClientBackgroundAmbience(options) {
@@ -175,6 +220,18 @@
       });
   }
 
+  function ensureContextRunning(ctx) {
+    if (ctx.state === "running") return Promise.resolve(ctx);
+    return ctx.resume().then(function () {
+      if (ctx.state !== "running") {
+        var err = new Error("مرورگر پخش را مسدود کرد. دوباره روی پلی بزن.");
+        err.name = "NotAllowedError";
+        throw err;
+      }
+      return ctx;
+    });
+  }
+
   function play(url, settings, options) {
     var ctx = getContext();
     if (!ctx) return Promise.reject(new Error("مرورگر از پخش صدا پشتیبانی نمی‌کند."));
@@ -182,29 +239,28 @@
     stopInternal();
 
     return loadBuffer(url).then(function (buffer) {
-      if (ctx.state === "suspended") {
-        return ctx.resume().then(function () { return buffer; });
-      }
-      return buffer;
+      return ensureContextRunning(ctx).then(function () { return buffer; });
     }).then(function (buffer) {
       var ambiencePromise = wantsClientBackgroundAmbience(options)
         ? startBackgroundAmbience(ctx)
         : Promise.resolve();
 
       return ambiencePromise.then(function () {
-        buildChain(ctx, settings || {});
-        sourceNode.buffer = buffer;
-        sourceNode.loop = false;
-        sourceNode.onended = function () {
-          stopBackgroundAmbience();
-          isPlaying = false;
-          playingUrl = null;
+        return ensureContextRunning(ctx).then(function () {
+          buildChain(ctx, settings || {});
+          sourceNode.buffer = buffer;
+          sourceNode.loop = false;
+          sourceNode.onended = function () {
+            stopBackgroundAmbience();
+            isPlaying = false;
+            playingUrl = null;
+            notifyState();
+          };
+          sourceNode.start(0);
+          isPlaying = true;
+          playingUrl = url;
           notifyState();
-        };
-        sourceNode.start(0);
-        isPlaying = true;
-        playingUrl = url;
-        notifyState();
+        });
       });
     });
   }
@@ -230,6 +286,7 @@
     play: play,
     toggle: toggle,
     stop: stopInternal,
+    unlock: unlock,
     updateSettings: updateSettings,
     setOnStateChange: setOnStateChange,
     isPlaying: function () { return isPlaying; },

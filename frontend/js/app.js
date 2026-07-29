@@ -724,8 +724,12 @@
       backgroundAmbienceElement.loop = true;
       backgroundAmbienceElement.preload = "auto";
       backgroundAmbienceElement.volume = BACKGROUND_AMBIENCE_VOLUME;
+      backgroundAmbienceElement.addEventListener("error", function () {
+        console.warn("[app] background ambience asset missing or unreadable:", BACKGROUND_AMBIENCE_URL);
+        stopNativeBackgroundAmbience();
+      });
     }
-    backgroundAmbienceElement.play().catch(function () { /* autoplay blocked */ });
+    backgroundAmbienceElement.play().catch(function () { /* autoplay blocked or missing file */ });
   }
 
   function syncNativeBackgroundAmbience(playing) {
@@ -1276,6 +1280,46 @@
     syncPlayingState(false);
   }
 
+  // Tiny silent WAV — unlocks HTMLMediaElement autoplay during a user gesture.
+  var SILENT_AUDIO_DATA_URI =
+    "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+  var htmlAudioUnlockElement = null;
+
+  /**
+   * Call synchronously on play-button click, before any await/network work.
+   * Unlocks both Web Audio (VoicePlayer) and HTMLAudioElement autoplay.
+   */
+  function unlockAudioForUserGesture() {
+    if (window.VoicePlayer && typeof window.VoicePlayer.unlock === "function") {
+      try {
+        window.VoicePlayer.unlock();
+      } catch (e) {
+        /* ignore */
+      }
+    }
+
+    try {
+      if (!htmlAudioUnlockElement) {
+        htmlAudioUnlockElement = new Audio(SILENT_AUDIO_DATA_URI);
+        htmlAudioUnlockElement.preload = "auto";
+        htmlAudioUnlockElement.setAttribute("playsinline", "");
+      }
+      htmlAudioUnlockElement.muted = true;
+      htmlAudioUnlockElement.volume = 0;
+      var playPromise = htmlAudioUnlockElement.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(function () {
+            htmlAudioUnlockElement.pause();
+            htmlAudioUnlockElement.currentTime = 0;
+          })
+          .catch(function () { /* ignore */ });
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function ensurePreviewAudioElement() {
     if (previewAudioElement && document.body.contains(previewAudioElement)) {
       return previewAudioElement;
@@ -1321,14 +1365,48 @@
     return playUrl;
   }
 
+  function playVoicePreviewViaHtml(voice, playUrl, generation) {
+    var el = ensurePreviewAudioElement();
+    el.pause();
+    el.src = playUrl;
+    applyPreviewPlaybackSettings(el);
+    previewAudioVoiceId = voice.id;
+    state.playbackVoiceId = voice.id;
+
+    return waitForAudioReady(el)
+      .catch(function () { /* some browsers fire play before metadata */ })
+      .then(function () {
+        if (generation !== previewPlaybackGeneration) {
+          el.pause();
+          return false;
+        }
+        return el.play().then(function () {
+          if (generation !== previewPlaybackGeneration) {
+            el.pause();
+            return false;
+          }
+          syncPlayingState(true);
+          return true;
+        });
+      });
+  }
+
   function playVoicePreviewFromCache(voice, playUrl) {
-    if (!window.VoicePlayer) {
-      showVoiceFeedback("پخش‌کننده صدا در دسترس نیست.", true);
+    if (window.VoicePlayer && window.VoicePlayer.isPlaying() && window.VoicePlayer.getPlayingUrl() === playUrl) {
+      window.VoicePlayer.stop();
+      previewAudioVoiceId = null;
+      state.playbackVoiceId = null;
+      syncPlayingState(false);
       return Promise.resolve(false);
     }
 
-    if (window.VoicePlayer.isPlaying() && window.VoicePlayer.getPlayingUrl() === playUrl) {
-      window.VoicePlayer.stop();
+    if (
+      previewAudioElement
+      && !previewAudioElement.paused
+      && previewAudioVoiceId === voice.id
+    ) {
+      previewAudioElement.pause();
+      previewAudioElement.currentTime = 0;
       previewAudioVoiceId = null;
       state.playbackVoiceId = null;
       syncPlayingState(false);
@@ -1342,35 +1420,52 @@
       previewAudioElement.pause();
       previewAudioElement.currentTime = 0;
     }
+    if (window.VoicePlayer) window.VoicePlayer.stop();
 
     var generation = ++previewPlaybackGeneration;
     previewAudioVoiceId = voice.id;
     state.playbackVoiceId = voice.id;
 
-    return window.VoicePlayer.play(playUrl, getEffectiveVoiceSettings(), {
-      backgroundAmbience: false,
-      backgroundAmbienceApplied: false,
-    })
-      .then(function () {
+    function failPreview(err) {
+      if (generation !== previewPlaybackGeneration) return false;
+      previewAudioVoiceId = null;
+      syncPlayingState(false);
+      var msg = "پخش صدای راوی ناموفق بود.";
+      if (err && err.name === "NotAllowedError") {
+        msg = "مرورگر پخش را مسدود کرد. دوباره روی پلی بزن.";
+      } else if (err && err.message) {
+        msg = err.message;
+      }
+      showVoiceFeedback(msg, true);
+      return false;
+    }
+
+    function playWithVoicePlayer() {
+      if (!window.VoicePlayer) {
+        return Promise.reject(new Error("پخش‌کننده صدا در دسترس نیست."));
+      }
+      return window.VoicePlayer.play(playUrl, getEffectiveVoiceSettings(), {
+        backgroundAmbience: false,
+        backgroundAmbienceApplied: false,
+      }).then(function () {
         if (generation !== previewPlaybackGeneration) {
           window.VoicePlayer.stop();
           return false;
         }
         syncPlayingState(true);
         return true;
-      })
-      .catch(function (err) {
+      });
+    }
+
+    // Prefer HTMLAudioElement for narrator preview: survives long TTS awaits
+    // after unlockAudioForUserGesture(). Fall back to Web Audio filters if needed.
+    return playVoicePreviewViaHtml(voice, playUrl, generation)
+      .catch(function (primaryErr) {
         if (generation !== previewPlaybackGeneration) return false;
-        previewAudioVoiceId = null;
-        syncPlayingState(false);
-        var msg = "پخش صدای راوی ناموفق بود.";
-        if (err && err.name === "NotAllowedError") {
-          msg = "مرورگر پخش را مسدود کرد. دوباره روی پلی بزن.";
-        } else if (err && err.message) {
-          msg = err.message;
-        }
-        showVoiceFeedback(msg, true);
-        return false;
+        return playWithVoicePlayer()
+          .catch(function (fallbackErr) {
+            return failPreview(fallbackErr || primaryErr);
+          });
       });
   }
 
@@ -1590,6 +1685,7 @@
         return true;
       }
       try {
+        unlockAudioForUserGesture();
         applyStoryPlaybackSettings(listAudioElement);
         await listAudioElement.play();
         updateHistoryCardPlayButtons();
@@ -1599,6 +1695,7 @@
       }
     }
 
+    unlockAudioForUserGesture();
     stopListAudioPlayback();
     stopVoicePlayback();
 
@@ -1682,6 +1779,8 @@
     if (state.isGeneratingAudio) {
       state.isGeneratingAudio = false;
     }
+    // Unlock autoplay while we still have the user gesture (before TTS await).
+    unlockAudioForUserGesture();
     stopListAudioPlayback();
     if (state.isPlaying) {
       stopVoicePlayback();
@@ -3649,6 +3748,7 @@
 
       if (!ensureStoryAudioUrl()) {
         if (!state.storyId) return;
+        unlockAudioForUserGesture();
         var generated = await handleGenerateAudio({ autoPlay: true, suppressToast: true });
         updateHomePlayCard();
         if (!generated) {
@@ -3668,6 +3768,8 @@
         return;
       }
 
+      // Unlock autoplay while we still have the user gesture (before hydrate await).
+      unlockAudioForUserGesture();
       stopPreviewPlayback();
       stopListAudioPlayback();
 
@@ -3698,11 +3800,13 @@
 
     if (!state.storyResult) return;
     if (!state.audioFullUrl) {
+      unlockAudioForUserGesture();
       handleGenerateAudio().then(function () {
         if (state.audioFullUrl) playWithVoiceSettings(getPlaybackUrl());
       });
       return;
     }
+    unlockAudioForUserGesture();
     playWithVoiceSettings(getPlaybackUrl());
   }
 
