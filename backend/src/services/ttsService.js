@@ -16,6 +16,8 @@ import {
   synthesizeWithGapGptGeminiTts,
 } from './gapgptGeminiTtsService.js';
 import { mixNarrationWithBackgroundAmbience } from './backgroundAmbienceService.js';
+import { fitAudioToDurationMinutes } from './audioDurationService.js';
+import { getDurationTargets } from '../catalog/storyDuration.js';
 
 const SUPPORTED_FORMATS = ['mp3', 'wav', 'opus', 'aac', 'flac'];
 
@@ -112,23 +114,28 @@ export async function generateStoryAudioWithGapGptGemini({
 }
 
 export async function generateStoryAudioWithMock({ story, format }) {
-  const normalizedFormat = normalizeFormat(format);
-  const filename = createSafeAudioFilename('story-mock', normalizedFormat);
-  const audioPath = getAudioStoragePath(filename);
+  const requestedFormat = normalizeFormat(format);
+  const minutes = Number(story?.durationMinutes);
+  const hasDuration = Number.isFinite(minutes) && minutes >= 1 && minutes <= 5;
+  const durationMs = hasDuration
+    ? getDurationTargets(minutes).targetSeconds * 1000
+    : 500;
 
-  if (normalizedFormat === 'wav') {
-    fs.writeFileSync(audioPath, createSilentWavBuffer());
-  } else {
-    fs.writeFileSync(audioPath, Buffer.from('MOCK_AUDIO_PLACEHOLDER'));
-  }
+  // Silent WAV keeps an accurate timeline for mock / local testing.
+  const outFormat = 'wav';
+  const filename = createSafeAudioFilename('story-mock', outFormat);
+  const audioPath = getAudioStoragePath(filename);
+  fs.writeFileSync(audioPath, createSilentWavBuffer(durationMs));
 
   return {
     audioPath,
     model: 'mock-tts',
     voice: 'mock',
-    format: normalizedFormat,
+    format: outFormat,
     provider: 'mock',
     fallbackUsed: false,
+    requestedFormat,
+    durationSeconds: durationMs / 1000,
   };
 }
 
@@ -266,6 +273,43 @@ async function applyBackgroundAmbienceIfRequested(result, backgroundAmbience) {
       backgroundAmbienceApplied: false,
     };
   }
+}
+
+async function applyStoryDurationFit(result, durationMinutes) {
+  const minutes = Number(durationMinutes);
+  if (!result?.audioPath || !Number.isFinite(minutes) || minutes < 1 || minutes > 5) {
+    return result;
+  }
+
+  // Mock already wrote exact-length silence.
+  if (result.provider === 'mock' && result.durationSeconds != null) {
+    return result;
+  }
+
+  try {
+    const fitted = await fitAudioToDurationMinutes(
+      result.audioPath,
+      minutes,
+      result.format,
+    );
+    return {
+      ...result,
+      audioPath: fitted.audioPath,
+      durationSeconds: fitted.durationSeconds,
+      targetDurationSeconds: fitted.targetSeconds,
+      durationAdjusted: fitted.adjusted === true,
+    };
+  } catch (err) {
+    if (env.isDevelopment || env.LOG_LEVEL === 'debug') {
+      console.warn('[audio-duration] skipped:', err.message);
+    }
+    return result;
+  }
+}
+
+async function finalizeGeneratedAudio(result, backgroundAmbience, durationMinutes) {
+  const withAmbience = await applyBackgroundAmbienceIfRequested(result, backgroundAmbience);
+  return applyStoryDurationFit(withAmbience, durationMinutes);
 }
 
 async function generateWithIviraOrFallback({
@@ -409,7 +453,7 @@ export async function generateStoryAudio({
       story,
       format: normalizedFormat,
     });
-    return applyBackgroundAmbienceIfRequested({ ...result, fallbackUsed }, backgroundAmbience);
+    return finalizeGeneratedAudio({ ...result, fallbackUsed }, backgroundAmbience, story?.durationMinutes);
   }
 
   if (env.TTS_PROVIDER === 'ivira') {
@@ -421,10 +465,10 @@ export async function generateStoryAudio({
         speed,
       });
 
-      return applyBackgroundAmbienceIfRequested({
+      return finalizeGeneratedAudio({
         ...iviraResult,
         fallbackUsed: fallbackUsed || iviraResult.fallbackUsed,
-      }, backgroundAmbience);
+      }, backgroundAmbience, story?.durationMinutes);
     } catch (err) {
       const error = new Error(err.message || 'خطا در تولید صدا با ویرا (آواشو). لطفاً دوباره تلاش کنید.');
       error.statusCode = err.statusCode || 502;
@@ -445,10 +489,10 @@ export async function generateStoryAudio({
         isCustomVoice: voiceType === 'custom',
       });
 
-      return applyBackgroundAmbienceIfRequested({
+      return finalizeGeneratedAudio({
         ...elevenLabsResult,
         fallbackUsed: fallbackUsed || elevenLabsResult.fallbackUsed,
-      }, backgroundAmbience);
+      }, backgroundAmbience, story?.durationMinutes);
     } catch (err) {
       if (voiceType !== 'custom') {
         const error = new Error('خطا در تولید صدا با ElevenLabs. لطفاً دوباره تلاش کنید.');
@@ -467,10 +511,10 @@ export async function generateStoryAudio({
           isCustomVoice: false,
         });
 
-        return applyBackgroundAmbienceIfRequested({
+        return finalizeGeneratedAudio({
           ...fallbackResult,
           fallbackUsed: true,
-        }, backgroundAmbience);
+        }, backgroundAmbience, story?.durationMinutes);
       } catch (fallbackErr) {
         const error = new Error('خطا در تولید صدا با ElevenLabs. لطفاً دوباره تلاش کنید.');
         error.statusCode = 502;
@@ -491,10 +535,10 @@ export async function generateStoryAudio({
       speed,
     });
 
-    return applyBackgroundAmbienceIfRequested({
+    return finalizeGeneratedAudio({
       ...openaiResult,
       fallbackUsed: fallbackUsed || openaiResult.fallbackUsed,
-    }, backgroundAmbience);
+    }, backgroundAmbience, story?.durationMinutes);
   } catch (err) {
     if (voiceType !== 'custom') {
       const error = new Error('خطا در تولید صدا با OpenAI TTS. لطفاً دوباره تلاش کنید.');
@@ -514,10 +558,10 @@ export async function generateStoryAudio({
         speed,
       });
 
-      return applyBackgroundAmbienceIfRequested({
+      return finalizeGeneratedAudio({
         ...fallbackResult,
         fallbackUsed: true,
-      }, backgroundAmbience);
+      }, backgroundAmbience, story?.durationMinutes);
     } catch (fallbackErr) {
       const error = new Error('خطا در تولید صدا با OpenAI TTS. لطفاً دوباره تلاش کنید.');
       error.statusCode = 502;

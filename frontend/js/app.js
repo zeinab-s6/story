@@ -506,13 +506,17 @@
 
   function applyStoryPlaybackSettings(element) {
     if (!element) return;
-    var settings = getEffectiveVoiceSettings();
-    element.playbackRate = Math.min(1.5, Math.max(0.5, settings.speed));
+    // Story/list audio length is fitted server-side to durationMinutes.
+    // Keep playbackRate at 1 so the selected 1–5 minutes stays accurate.
+    element.playbackRate = 1;
     element.volume = state.advanced.autoNormalize ? 1 : 0.82;
   }
 
   function applyPreviewPlaybackSettings(element) {
-    applyStoryPlaybackSettings(element);
+    if (!element) return;
+    var settings = getEffectiveVoiceSettings();
+    element.playbackRate = Math.min(1.5, Math.max(0.5, settings.speed));
+    element.volume = state.advanced.autoNormalize ? 1 : 0.82;
   }
 
   function updateHomePlayCard() {
@@ -2337,9 +2341,12 @@
     input.setAttribute("aria-valuetext", fa);
   }
 
+  // Keep in sync with backend WORDS_PER_MINUTE (storyDuration.js).
+  var WORDS_PER_MINUTE = 96;
+
   function estimateReadingMinutes(text) {
     if (!text) return 0;
-    return Math.max(1, Math.round(text.trim().split(/\s+/).length / 80));
+    return Math.max(1, Math.round(text.trim().split(/\s+/).filter(Boolean).length / WORDS_PER_MINUTE));
   }
 
   function loadSavedChildName() {

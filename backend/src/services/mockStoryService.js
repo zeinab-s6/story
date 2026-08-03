@@ -1,5 +1,9 @@
 import { getAgeRange } from '../catalog/ageRules.js';
 import { STORY_GOALS } from '../catalog/storyGoals.js';
+import {
+  countStoryWords,
+  getDurationTargets,
+} from '../catalog/storyDuration.js';
 
 function buildChildName(input) {
   return input.childName || 'دوست کوچولوی ما';
@@ -20,6 +24,48 @@ function buildStoryBase(input, overrides) {
     storyText: overrides.storyText(childName, input),
     safetyNote: overrides.safetyNote || `این قصه برای ${goalLabel} طراحی شده و کاملاً آرام و مناسب سن ${input.age} سالگی است.`,
   };
+}
+
+const SOFT_BRIDGES = [
+  (name, interest) =>
+    `${name} نفس عمیقی کشید. ${interest} هم آرام کنارش نشست و با صدای نرم گفت: «با هم ادامه می‌دهیم.»`,
+  (name, interest) =>
+    `نور ملایمی در اتاق بود. ${name} به ${interest} نگاه کرد و لبخند زد. همه چیز آرام و امن بود.`,
+  (name, interest) =>
+    `${interest} یک داستان کوچک دیگر تعریف کرد. ${name} گوش داد؛ آرام... آرام... مثل موج‌های نرم.`,
+  (name, interest) =>
+    `باد خیلی آهسته از پنجره رد شد. ${name} پلک‌هایش سنگین شد و ${interest} نجوا کرد: «تو امنی.»`,
+  (name, interest) =>
+    `${name} انگشتان کوچکش را باز و بسته کرد. ${interest} گفت: «یک نفس دیگر... و کمی آرامش بیشتر.»`,
+];
+
+/**
+ * Expand or trim mock storyText so word count lands near the selected duration.
+ */
+function fitStoryTextToDuration(baseText, input) {
+  const { targetWords, minWords, maxWords } = getDurationTargets(input.durationMinutes);
+  const childName = buildChildName(input);
+  const interest = input.interest || 'دوست کوچولو';
+  let text = String(baseText || '').trim();
+  let words = countStoryWords(text);
+  let bridgeIndex = 0;
+
+  while (words < minWords && bridgeIndex < 40) {
+    const bridge = SOFT_BRIDGES[bridgeIndex % SOFT_BRIDGES.length](childName, interest);
+    text = `${text}\n${bridge}`;
+    words = countStoryWords(text);
+    bridgeIndex += 1;
+  }
+
+  if (words > maxWords) {
+    const parts = text.split(/\s+/).filter(Boolean);
+    text = parts.slice(0, targetWords).join(' ');
+    if (!/[.!?؟۔…]$/.test(text)) {
+      text = `${text}.`;
+    }
+  }
+
+  return text;
 }
 
 const TEMPLATES = {
@@ -132,5 +178,10 @@ export function generateStoryWithMock(input) {
     throw new Error(`قالب mock برای هدف "${input.goal}" وجود ندارد.`);
   }
 
-  return buildStoryBase(input, template);
+  const story = buildStoryBase(input, template);
+  story.storyText = fitStoryTextToDuration(story.storyText, input);
+  story.durationMinutes = getDurationTargets(input.durationMinutes).durationMinutes;
+  return story;
 }
+
+export default generateStoryWithMock;
