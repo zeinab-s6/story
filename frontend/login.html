@@ -44,51 +44,40 @@
     </header>
 
     <div class="login-card">
+      <div class="auth-tabs" role="tablist" aria-label="ورود یا ثبت‌نام">
+        <button type="button" class="auth-tab auth-tab--active" id="tab-login" role="tab" aria-selected="true">ورود</button>
+        <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false">ثبت‌نام</button>
+      </div>
+
       <div class="auth-error" id="login-error" hidden role="alert"></div>
 
-      <form id="otp-phone-form" class="auth-form" novalidate>
-        <div class="form-group form-group--login">
-          <label for="login-phone">شماره موبایل</label>
-          <input
-            type="tel"
-            id="login-phone"
-            name="phone"
-            inputmode="numeric"
-            autocomplete="tel"
-            placeholder="۰۹۱۲۳۴۵۶۷۸۹"
-            maxlength="13"
-            required
-          >
-        </div>
-        <p class="login-otp-hint">کد تأیید با پیامک برای شما ارسال می‌شود.</p>
-        <button type="submit" class="btn btn--primary btn--full btn--login" id="btn-request-otp">
-          دریافت کد ورود
-        </button>
-      </form>
+      <div id="panel-login" role="tabpanel">
+        <form id="login-form" class="auth-form" novalidate>
+          <div class="form-group form-group--login">
+            <label for="login-email">ایمیل</label>
+            <input type="email" id="login-email" name="email" placeholder="name@example.com" autocomplete="email" required>
+          </div>
+          <div class="form-group form-group--login">
+            <label for="login-password">رمز عبور</label>
+            <input type="password" id="login-password" name="password" placeholder="حداقل ۶ کاراکتر" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--login">ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span></button>
+        </form>
+      </div>
 
-      <form id="otp-code-form" class="auth-form" hidden novalidate>
-        <div class="form-group form-group--login">
-          <label for="login-otp">کد تأیید</label>
-          <input
-            type="text"
-            id="login-otp"
-            name="code"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            placeholder="کد ۶ رقمی"
-            maxlength="8"
-            required
-          >
-        </div>
-        <p class="login-otp-hint" id="otp-sent-hint">کد به شماره شما ارسال شد.</p>
-        <button type="submit" class="btn btn--primary btn--full btn--login" id="btn-verify-otp">
-          تأیید و ورود به <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span>
-        </button>
-        <div class="login-actions">
-          <button type="button" class="btn btn--ghost btn--full" id="btn-resend-otp">ارسال دوباره کد</button>
-          <button type="button" class="btn btn--ghost btn--full" id="btn-change-phone">تغییر شماره موبایل</button>
-        </div>
-      </form>
+      <div id="panel-register" hidden role="tabpanel">
+        <form id="register-form" class="auth-form" novalidate>
+          <div class="form-group form-group--login">
+            <label for="register-email">ایمیل</label>
+            <input type="email" id="register-email" name="email" placeholder="name@example.com" autocomplete="email" required>
+          </div>
+          <div class="form-group form-group--login">
+            <label for="register-password">رمز عبور</label>
+            <input type="password" id="register-password" name="password" placeholder="حداقل ۶ کاراکتر" autocomplete="new-password" required>
+          </div>
+          <button type="submit" class="btn btn--primary btn--full btn--login">ساخت حساب <span class="brand-name"><span class="brand-name__lala">lala</span><span class="brand-name__bye">Bye</span></span></button>
+        </form>
+      </div>
 
       <p class="login-footnote">مناسب برای لحظات قبل خواب</p>
     </div>
