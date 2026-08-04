@@ -128,6 +128,24 @@
     });
   }
 
+  async function getAuthProviders() {
+    return request(apiUrl("/api/auth/providers"), { method: "GET" });
+  }
+
+  async function loginWithGoogle(idToken) {
+    return request(apiUrl("/api/auth/google"), {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ idToken: idToken }, getAuthDevicePayload())),
+    });
+  }
+
+  async function loginWithGoogleAccessToken(accessToken) {
+    return request(apiUrl("/api/auth/google"), {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ accessToken: accessToken }, getAuthDevicePayload())),
+    });
+  }
+
   async function getMe() {
     var identity = window.LalaByeDevice?.getDeviceIdentity?.() || {};
     var query = [];
@@ -230,6 +248,9 @@
     register,
     requestOtp,
     verifyOtp,
+    getAuthProviders,
+    loginWithGoogle,
+    loginWithGoogleAccessToken,
     getMe,
     updateChildProfile,
     getQuota,

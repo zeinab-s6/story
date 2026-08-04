@@ -98,9 +98,7 @@ export async function requestOtp(rawPhone) {
     ok: true,
     phone,
     expiresInSec: Math.floor(OTP_TTL_MS / 1000),
-    ...(env.OTP_MODE === 'mock' && env.isDevelopment
-      ? { debugHint: `کد تست: ${code}` }
-      : {}),
+    ...(env.OTP_MODE === 'mock' ? { debugHint: code } : {}),
   };
 }
 

@@ -504,6 +504,14 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
   flex-shrink: 0;
 }
 
+.btn--login-secondary {
+  margin-top: 0;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--login-muted);
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -521,6 +529,60 @@ body.login-page:not(.login-page--night) .btn--primary:hover:not(:disabled) {
   font-size: 0.78rem;
   color: var(--login-muted);
   line-height: 1.5;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: var(--login-muted);
+  font-size: 0.8rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--login-border);
+}
+
+.auth-divider span {
+  flex-shrink: 0;
+}
+
+.btn--google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: 1.5px solid var(--login-input-border);
+  background: var(--login-input-bg);
+  color: var(--login-text);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background var(--scene-transition), color var(--scene-transition);
+}
+
+.btn--google:hover:not(:disabled) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.1);
+}
+
+.btn--google:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-google__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .auth-error {

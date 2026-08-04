@@ -144,6 +144,7 @@ export const env = {
   DAILY_STORY_LIMIT: Number(process.env.DAILY_STORY_LIMIT) || 2,
   OTP_MODE: (process.env.OTP_MODE || 'mock').toLowerCase(),
   OTP_MOCK_CODE: (process.env.OTP_MOCK_CODE || '123456').trim(),
+  GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
 
