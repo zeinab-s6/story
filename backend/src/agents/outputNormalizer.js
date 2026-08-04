@@ -18,7 +18,7 @@ export function normalizeStoryOutput(rawStory, input) {
     title: trimString(rawStory.title),
     ageRange,
     goal: trimString(rawStory.goal) || input.goal,
-    durationMinutes: Number(rawStory.durationMinutes) || input.durationMinutes,
+    durationMinutes: Number(input.durationMinutes) || Number(rawStory.durationMinutes) || 3,
     parentEffort: normalizeParentEffort(rawStory.parentEffort),
     parentIntro: trimString(rawStory.parentIntro),
     storyText: trimString(rawStory.storyText),

@@ -1,10 +1,15 @@
 import env from '../config/env.js';
-import { buildStoryPrompt } from './promptBuilder.js';
+import { buildStoryPrompt, buildDurationAdjustPrompt } from './promptBuilder.js';
 import { normalizeStoryOutput } from './outputNormalizer.js';
 import { generateStoryWithMock } from '../services/mockStoryService.js';
 import { generateStoryWithOpenAI } from '../services/openaiService.js';
 import { saveStoryRequestAndResult } from '../repositories/storyRepository.js';
 import { saveUsageLog } from '../repositories/usageRepository.js';
+import {
+  classifyStoryLength,
+  countStoryWords,
+  getDurationTargets,
+} from '../catalog/storyDuration.js';
 
 const REQUIRED_STORY_FIELDS = [
   'title',
@@ -37,6 +42,65 @@ function validateStoryShape(story) {
     }
   }
   return null;
+}
+
+async function adjustStoryToDuration(story, input) {
+  if (env.STORY_PROVIDER !== 'openai') {
+    return story;
+  }
+
+  const maxAttempts = 3;
+  let current = story;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const lengthClass = classifyStoryLength(current.storyText, input.durationMinutes);
+    if (lengthClass === 'ok') {
+      return current;
+    }
+
+    const wordCount = countStoryWords(current.storyText);
+    const adjustPrompt = buildDurationAdjustPrompt(input, current, wordCount, lengthClass);
+
+    try {
+      const rawAdjusted = await generateStoryWithOpenAI(adjustPrompt);
+      const adjusted = normalizeStoryOutput(rawAdjusted, input);
+      const shapeError = validateStoryShape(adjusted);
+      if (shapeError || !adjusted.storyText) {
+        continue;
+      }
+
+      const targets = getDurationTargets(input.durationMinutes);
+      const beforeWords = countStoryWords(current.storyText);
+      const afterWords = countStoryWords(adjusted.storyText);
+      const beforeDist = Math.abs(beforeWords - targets.targetWords);
+      const afterDist = Math.abs(afterWords - targets.targetWords);
+      const afterClass = classifyStoryLength(adjusted.storyText, input.durationMinutes);
+
+      if (afterClass === 'ok' || afterDist < beforeDist) {
+        if (env.isDevelopment || env.LOG_LEVEL === 'debug') {
+          console.info(
+            '[story-duration]',
+            `attempt ${attempt}: ${lengthClass}→${afterClass}`,
+            `${beforeWords}→${afterWords} words`,
+            `(target ${targets.targetWords})`,
+          );
+        }
+        current = {
+          ...adjusted,
+          durationMinutes: targets.durationMinutes,
+        };
+        if (afterClass === 'ok') {
+          return current;
+        }
+      }
+    } catch (err) {
+      if (env.isDevelopment || env.LOG_LEVEL === 'debug') {
+        console.warn('[story-duration] adjust failed:', err.message);
+      }
+    }
+  }
+
+  return current;
 }
 
 export async function createStory(input) {
@@ -72,7 +136,7 @@ export async function createStory(input) {
     throw err;
   }
 
-  const story = normalizeStoryOutput(rawStory, input);
+  let story = normalizeStoryOutput(rawStory, input);
 
   const shapeError = validateStoryShape(story);
   if (shapeError) {
@@ -90,6 +154,18 @@ export async function createStory(input) {
     err.statusCode = 502;
     throw err;
   }
+
+  // Force durationMinutes from the parent's selection (not the model's echo).
+  story = {
+    ...story,
+    durationMinutes: getDurationTargets(input.durationMinutes).durationMinutes,
+  };
+
+  story = await adjustStoryToDuration(story, input);
+  story = {
+    ...story,
+    durationMinutes: getDurationTargets(input.durationMinutes).durationMinutes,
+  };
 
   const latencyMs = Date.now() - startTime;
 
