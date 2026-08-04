@@ -1,7 +1,7 @@
 /**
  * OTP / SMS gateway abstraction.
- * Swap sendSms() implementation when the real OTP panel API is provided.
- * Set OTP_MODE=mock (default) for local/dev with fixed code OTP_MOCK_CODE.
+ * OTP_MODE=mock — fixed code for local/dev (OTP_MOCK_CODE).
+ * OTP_MODE=sms — Melipayamak shared pattern (کنسول ملی‌پیامک).
  */
 
 import env from '../config/env.js';
@@ -10,6 +10,7 @@ const otpStore = new Map();
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
+const MELIPAYAMAK_SHARED_URL = 'https://console.melipayamak.com/api/send/shared';
 
 function normalizePhone(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
@@ -34,7 +35,65 @@ function generateCode() {
 }
 
 /**
- * Hook for the real SMS panel. Currently logs in mock mode.
+ * Melipayamak shared-pattern SMS (خط خدماتی اشتراکی).
+ * @param {string} phone
+ * @param {string} code
+ */
+async function sendMelipayamakSms(phone, code) {
+  const token = env.MELIPAYAMAK_TOKEN;
+  const bodyId = env.MELIPAYAMAK_BODY_ID;
+
+  if (!token) {
+    throw new Error('توکن ملی‌پیامک پیکربندی نشده است.');
+  }
+  if (!bodyId) {
+    throw new Error(
+      'کد متن الگوی ملی‌پیامک (MELIPAYAMAK_BODY_ID) تنظیم نشده است. ' +
+        'در پنل، ستون «کد متن» کنار الگوی lalaByesignup را وارد کنید.'
+    );
+  }
+
+  const response = await fetch(`${MELIPAYAMAK_SHARED_URL}/${token}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bodyId,
+      to: phone,
+      args: [code],
+    }),
+  });
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const detail = (data && (data.status || data.message || data.error)) || response.statusText;
+    throw new Error(detail ? `ارسال پیامک ناموفق بود: ${detail}` : 'ارسال پیامک ناموفق بود.');
+  }
+
+  const status = data && data.status != null ? String(data.status).trim() : '';
+  if (status) {
+    throw new Error(status);
+  }
+
+  const recId = Number(data && data.recId);
+  if (!Number.isFinite(recId) || recId <= 0) {
+    throw new Error('ارسال پیامک ناموفق بود.');
+  }
+
+  return {
+    sent: true,
+    provider: 'melipayamak',
+    recId: String(recId),
+    pattern: env.MELIPAYAMAK_PATTERN_NAME || undefined,
+  };
+}
+
+/**
  * @param {string} phone
  * @param {string} code
  */
@@ -44,7 +103,10 @@ async function sendSms(phone, code) {
     return { sent: true, provider: 'mock' };
   }
 
-  // TODO: wire real OTP panel API here (credentials via env).
+  if (env.OTP_MODE === 'sms') {
+    return sendMelipayamakSms(phone, code);
+  }
+
   throw new Error('سرویس پیامک هنوز پیکربندی نشده است.');
 }
 
