@@ -128,6 +128,17 @@
     });
   }
 
+  async function getAuthConfig() {
+    return request(apiUrl("/api/auth/config"), { method: "GET" });
+  }
+
+  async function loginWithGoogle(credential) {
+    return request(apiUrl("/api/auth/google"), {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ credential: credential }, getAuthDevicePayload())),
+    });
+  }
+
   async function getMe() {
     var identity = window.LalaByeDevice?.getDeviceIdentity?.() || {};
     var query = [];
@@ -230,6 +241,8 @@
     register,
     requestOtp,
     verifyOtp,
+    getAuthConfig,
+    loginWithGoogle,
     getMe,
     updateChildProfile,
     getQuota,

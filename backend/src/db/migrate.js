@@ -13,6 +13,7 @@ const COLUMN_ADDITIONS = [
   { table: 'stories', column: 'safety_reason', ddl: 'TEXT' },
   { table: 'stories', column: 'user_id', ddl: 'INTEGER REFERENCES users(id)' },
   { table: 'users', column: 'phone', ddl: 'TEXT' },
+  { table: 'users', column: 'google_id', ddl: 'TEXT' },
 ];
 
 function columnExists(db, table, column) {

@@ -6,6 +6,7 @@ import { signToken } from '../services/tokenService.js';
 import {
   createUser,
   createOrGetUserByPhone,
+  createOrGetUserByGoogle,
   getUserByEmail,
   toPublicUser,
   updateUserChildProfile,
@@ -21,6 +22,7 @@ import {
   ensureDeviceAccountBinding,
 } from '../services/deviceBindingService.js';
 import { requestOtp, verifyOtpCode } from '../services/otpService.js';
+import { verifyGoogleIdToken } from '../services/googleAuthService.js';
 
 const router = Router();
 
@@ -73,6 +75,37 @@ function attachDeviceToUser(userId, deviceIdentity) {
   });
 }
 
+function buildAuthSuccessResponse(user, deviceIdentity, { created = false, message } = {}) {
+  const token = signToken({ userId: user.id });
+  attachDeviceToUser(user.id, deviceIdentity);
+
+  const quota = deviceIdentity
+    ? getQuotaStatus({
+        userId: user.id,
+        ...deviceIdentity,
+      })
+    : null;
+
+  return {
+    success: true,
+    token,
+    user: toPublicUser(user),
+    message: message || (created ? 'حساب با موفقیت ساخته شد.' : 'خوش آمدید!'),
+    created,
+    ...(quota && { quota }),
+  };
+}
+
+/** Public auth UI config (safe to expose to the browser). */
+router.get('/config', (_req, res) => {
+  return res.json({
+    success: true,
+    googleClientId: env.GOOGLE_CLIENT_ID || null,
+    googleEnabled: Boolean(env.GOOGLE_CLIENT_ID),
+    otpEnabled: true,
+  });
+});
+
 router.post('/otp/request', async (req, res) => {
   const result = await requestOtp(req.body?.phone);
 
@@ -119,24 +152,50 @@ router.post('/otp/verify', (req, res) => {
     });
   }
 
-  const token = signToken({ userId: user.id });
-  attachDeviceToUser(user.id, deviceIdentity);
+  return res.status(created ? 201 : 200).json(
+    buildAuthSuccessResponse(user, deviceIdentity, {
+      created,
+      message: created ? 'حساب با موفقیت ساخته شد.' : 'خوش آمدید!',
+    }),
+  );
+});
 
-  const quota = deviceIdentity
-    ? getQuotaStatus({
-        userId: user.id,
-        ...deviceIdentity,
-      })
-    : null;
+router.post('/google', async (req, res, next) => {
+  try {
+    if (!env.GOOGLE_CLIENT_ID) {
+      return res.status(503).json({
+        success: false,
+        error: 'ورود با گوگل هنوز فعال نشده است.',
+      });
+    }
 
-  return res.status(created ? 201 : 200).json({
-    success: true,
-    token,
-    user: toPublicUser(user),
-    message: created ? 'حساب با موفقیت ساخته شد.' : 'خوش آمدید!',
-    created,
-    ...(quota && { quota }),
-  });
+    const profile = await verifyGoogleIdToken(req.body?.credential || req.body?.idToken);
+    const deviceIdentity = resolveAuthDeviceIdentity(req.body);
+    const { user, created } = createOrGetUserByGoogle(profile);
+
+    const deviceCheck = assertDeviceAccountAccess({
+      androidIdHash: deviceIdentity?.androidIdHash ?? extractAndroidIdHash(req.body),
+      userId: created ? null : user.id,
+      context: created ? 'register' : 'login',
+    });
+
+    if (!deviceCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: deviceCheck.code,
+        error: deviceCheck.error,
+      });
+    }
+
+    return res.status(created ? 201 : 200).json(
+      buildAuthSuccessResponse(user, deviceIdentity, {
+        created,
+        message: created ? 'حساب گوگل ساخته شد.' : 'خوش آمدید!',
+      }),
+    );
+  } catch (err) {
+    return next(err);
+  }
 });
 
 router.post('/register', (req, res) => {

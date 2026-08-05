@@ -1,7 +1,7 @@
 /**
- * OTP / SMS gateway abstraction.
- * Swap sendSms() implementation when the real OTP panel API is provided.
- * Set OTP_MODE=mock (default) for local/dev with fixed code OTP_MOCK_CODE.
+ * OTP / SMS gateway.
+ * OTP_MODE=mock     → fixed code (OTP_MOCK_CODE), no SMS
+ * OTP_MODE=kavenegar → Kavenegar verify/lookup with SMS_OTP_TEMPLATE
  */
 
 import env from '../config/env.js';
@@ -34,18 +34,93 @@ function generateCode() {
 }
 
 /**
- * Hook for the real SMS panel. Currently logs in mock mode.
- * @param {string} phone
- * @param {string} code
+ * Accept plain Kavenegar keys or hex-encoded tokens from the panel.
  */
+function resolveKavenegarApiKey() {
+  const raw = env.KAVENEGAR_API_KEY;
+  if (!raw) return '';
+  if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0 && raw.length >= 40) {
+    try {
+      const decoded = Buffer.from(raw, 'hex').toString('utf8');
+      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
+        return decoded;
+      }
+    } catch {
+      /* use raw */
+    }
+  }
+  return raw;
+}
+
+async function sendSmsViaKavenegar(phone, code) {
+  const apiKey = resolveKavenegarApiKey();
+  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup';
+
+  if (!apiKey) {
+    const error = new Error('کلید API کاوه‌نگار تنظیم نشده است.');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const params = new URLSearchParams({
+    receptor: phone,
+    token: code,
+    template,
+  });
+
+  const url = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/verify/lookup.json?${params.toString()}`;
+
+  let response;
+  try {
+    response = await fetch(url, { method: 'GET' });
+  } catch (err) {
+    const error = new Error('خطا در اتصال به سرویس پیامک.');
+    error.statusCode = 502;
+    if (env.isDevelopment) {
+      error.details = err.message;
+    }
+    throw error;
+  }
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    const error = new Error('پاسخ نامعتبر از سرویس پیامک.');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  const returnStatus = payload?.return?.status;
+  const returnMessage = payload?.return?.message;
+
+  if (!response.ok || (returnStatus != null && Number(returnStatus) !== 200)) {
+    const error = new Error(
+      returnMessage
+        ? `ارسال پیامک ناموفق بود: ${returnMessage}`
+        : 'ارسال پیامک ناموفق بود.',
+    );
+    error.statusCode = 502;
+    if (env.isDevelopment) {
+      error.details = JSON.stringify(payload?.return || payload || {}).slice(0, 400);
+    }
+    throw error;
+  }
+
+  return { sent: true, provider: 'kavenegar' };
+}
+
 async function sendSms(phone, code) {
   if (env.OTP_MODE === 'mock') {
     console.info(`[otp:mock] SMS to ${phone}: code=${code}`);
     return { sent: true, provider: 'mock' };
   }
 
-  // TODO: wire real OTP panel API here (credentials via env).
-  throw new Error('سرویس پیامک هنوز پیکربندی نشده است.');
+  if (env.OTP_MODE === 'kavenegar') {
+    return sendSmsViaKavenegar(phone, code);
+  }
+
+  throw new Error(`حالت OTP نامعتبر است: ${env.OTP_MODE}`);
 }
 
 export function validatePhone(rawPhone) {
@@ -90,7 +165,7 @@ export async function requestOtp(rawPhone) {
     return {
       ok: false,
       error: err.message || 'ارسال پیامک ناموفق بود.',
-      status: 502,
+      status: err.statusCode || 502,
     };
   }
 

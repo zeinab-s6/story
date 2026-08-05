@@ -2,12 +2,13 @@ import db from '../db/database.js';
 import { hashPassword } from '../services/passwordService.js';
 
 const insertUserStmt = db.prepare(`
-  INSERT INTO users (email, password_hash, display_name, avatar_url, child_gender, child_avatar_url, phone, created_at)
-  VALUES (@email, @passwordHash, @displayName, @avatarUrl, @childGender, @childAvatarUrl, @phone, @createdAt)
+  INSERT INTO users (email, password_hash, display_name, avatar_url, child_gender, child_avatar_url, phone, google_id, created_at)
+  VALUES (@email, @passwordHash, @displayName, @avatarUrl, @childGender, @childAvatarUrl, @phone, @googleId, @createdAt)
 `);
 
 const findByEmailStmt = db.prepare('SELECT * FROM users WHERE email = ?');
 const findByPhoneStmt = db.prepare('SELECT * FROM users WHERE phone = ?');
+const findByGoogleIdStmt = db.prepare('SELECT * FROM users WHERE google_id = ?');
 const findByIdStmt = db.prepare('SELECT * FROM users WHERE id = ?');
 const updateChildProfileStmt = db.prepare(`
   UPDATE users SET
@@ -15,6 +16,16 @@ const updateChildProfileStmt = db.prepare(`
     child_avatar_url = @childAvatarUrl,
     child_name = @childName,
     display_name = @displayName
+  WHERE id = @userId
+`);
+const linkGoogleStmt = db.prepare(`
+  UPDATE users SET
+    google_id = @googleId,
+    avatar_url = COALESCE(avatar_url, @avatarUrl),
+    display_name = CASE
+      WHEN display_name IS NULL OR trim(display_name) = '' OR display_name = 'والد' THEN @displayName
+      ELSE display_name
+    END
   WHERE id = @userId
 `);
 
@@ -25,6 +36,7 @@ function mapUserRow(row, includeHash = false) {
     id: row.id,
     email: row.email,
     phone: row.phone || null,
+    googleId: row.google_id || null,
     displayName: row.display_name,
     avatarUrl: row.avatar_url,
     childGender: row.child_gender || null,
@@ -40,7 +52,14 @@ function mapUserRow(row, includeHash = false) {
   return user;
 }
 
-export function createUser({ email, passwordHash, displayName, avatarUrl = null, phone = null }) {
+export function createUser({
+  email,
+  passwordHash,
+  displayName,
+  avatarUrl = null,
+  phone = null,
+  googleId = null,
+}) {
   const createdAt = new Date().toISOString();
   const result = insertUserStmt.run({
     email: email.toLowerCase().trim(),
@@ -50,6 +69,7 @@ export function createUser({ email, passwordHash, displayName, avatarUrl = null,
     childGender: null,
     childAvatarUrl: null,
     phone: phone || null,
+    googleId: googleId || null,
     createdAt,
   });
 
@@ -73,6 +93,34 @@ export function createOrGetUserByPhone(phone) {
   return { user, created: true };
 }
 
+export function createOrGetUserByGoogle({ googleId, email, displayName, avatarUrl = null }) {
+  const byGoogle = findByGoogleIdStmt.get(googleId);
+  if (byGoogle) {
+    return { user: mapUserRow(byGoogle), created: false };
+  }
+
+  const byEmail = findByEmailStmt.get(String(email).toLowerCase().trim());
+  if (byEmail) {
+    linkGoogleStmt.run({
+      userId: byEmail.id,
+      googleId,
+      avatarUrl,
+      displayName: displayName || byEmail.display_name || 'والد',
+    });
+    return { user: findById(byEmail.id), created: false };
+  }
+
+  const user = createUser({
+    email,
+    passwordHash: hashPassword(`google:${googleId}:${Date.now()}`),
+    displayName: displayName || 'والد',
+    avatarUrl,
+    googleId,
+  });
+
+  return { user, created: true };
+}
+
 function findById(id) {
   return mapUserRow(findByIdStmt.get(id));
 }
@@ -84,6 +132,11 @@ export function getUserByEmail(email) {
 export function getUserByPhone(phone) {
   if (!phone) return null;
   return mapUserRow(findByPhoneStmt.get(phone), true);
+}
+
+export function getUserByGoogleId(googleId) {
+  if (!googleId) return null;
+  return mapUserRow(findByGoogleIdStmt.get(googleId), true);
 }
 
 export function getUserById(id) {
