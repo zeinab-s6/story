@@ -152,6 +152,7 @@ router.post('/otp/request', async (req, res) => {
     phone: result.phone,
     expiresInSec: result.expiresInSec,
     message: 'کد تأیید ارسال شد.',
+    ...(result.defaultCode ? { defaultCode: result.defaultCode } : {}),
     ...(result.debugHint ? { debugHint: result.debugHint } : {}),
   });
 });

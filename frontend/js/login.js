@@ -80,7 +80,7 @@
     return digits;
   }
 
-  function showOtpStep(phone, hintText) {
+  function showOtpStep(phone, hintText, defaultCode) {
     pendingPhone = phone;
     if (phoneInput) {
       phoneInput.value = phone;
@@ -100,8 +100,9 @@
       }
     }
     if (otpInput) {
-      otpInput.value = "";
+      otpInput.value = defaultCode ? String(defaultCode) : "";
       otpInput.focus();
+      try { otpInput.select(); } catch (e) { /* ignore */ }
     }
   }
 
@@ -144,10 +145,11 @@
     setLoading(btnSendOtp, true);
     try {
       var result = await window.StorytellingAPI.requestOtp(phone);
-      var hint = result.debugHint
-        ? "حالت تست: کد " + result.debugHint
+      var defaultCode = result.defaultCode || result.debugHint || "";
+      var hint = defaultCode
+        ? "کد تأیید ارسال شد و در کادر قرار گرفت."
         : "کد تأیید به شماره " + (result.phone || phone) + " ارسال شد.";
-      showOtpStep(result.phone || phone, hint);
+      showOtpStep(result.phone || phone, hint, defaultCode);
     } catch (err) {
       showError(resolveAuthError(err, "ارسال کد ناموفق بود."));
     } finally {
