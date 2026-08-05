@@ -1,28 +1,25 @@
 (function () {
   "use strict";
 
-  var phoneForm = document.getElementById("otp-phone-form");
-  var codeForm = document.getElementById("otp-code-form");
+  var form = document.getElementById("login-form");
+  var errorEl = document.getElementById("login-error");
   var phoneInput = document.getElementById("login-phone");
   var otpInput = document.getElementById("login-otp");
-  var errorEl = document.getElementById("login-error");
-  var sentHint = document.getElementById("otp-sent-hint");
-  var btnRequest = document.getElementById("btn-request-otp");
-  var btnVerify = document.getElementById("btn-verify-otp");
-  var btnResend = document.getElementById("btn-resend-otp");
+  var otpGroup = document.getElementById("otp-group");
+  var otpHint = document.getElementById("otp-hint");
+  var btnSendOtp = document.getElementById("btn-send-otp");
+  var btnVerifyOtp = document.getElementById("btn-verify-otp");
   var btnChangePhone = document.getElementById("btn-change-phone");
-  var googleWrap = document.getElementById("login-google-wrap");
-  var googleBtnHost = document.getElementById("google-signin-button");
-  var loginDivider = document.getElementById("login-divider");
+  var btnGoogle = document.getElementById("btn-google-signin");
 
   var pendingPhone = "";
-  var resendTimer = null;
-  var resendSecondsLeft = 0;
-  var googleClientId = null;
+  var googleClientId = "";
+  var googleScriptLoading = null;
+  var googleTokenClient = null;
 
   function showError(msg) {
     if (!errorEl) return;
-    errorEl.textContent = msg || "";
+    errorEl.textContent = msg;
     errorEl.hidden = !msg;
   }
 
@@ -30,96 +27,6 @@
     if (!btn) return;
     btn.disabled = loading;
     btn.classList.toggle("btn--loading", loading);
-  }
-
-  function toEnglishDigits(value) {
-    return String(value || "")
-      .replace(/[۰-۹]/g, function (d) {
-        return String(d.charCodeAt(0) - 1728);
-      })
-      .replace(/[٠-٩]/g, function (d) {
-        return String(d.charCodeAt(0) - 1632);
-      });
-  }
-
-  function normalizePhoneInput(value) {
-    var digits = toEnglishDigits(value).replace(/\D/g, "");
-    if (digits.indexOf("98") === 0 && digits.length === 12) {
-      digits = "0" + digits.slice(2);
-    }
-    if (digits.indexOf("9") === 0 && digits.length === 10) {
-      digits = "0" + digits;
-    }
-    return digits;
-  }
-
-  function isValidPhone(phone) {
-    return /^09\d{9}$/.test(phone);
-  }
-
-  function formatPhoneDisplay(phone) {
-    if (!phone || phone.length < 11) return phone;
-    return phone.slice(0, 4) + "***" + phone.slice(-4);
-  }
-
-  function showPhoneStep() {
-    if (phoneForm) phoneForm.hidden = false;
-    if (codeForm) codeForm.hidden = true;
-    pendingPhone = "";
-    if (otpInput) otpInput.value = "";
-    showError("");
-    clearResendTimer();
-    updateResendButton();
-    if (googleWrap && googleClientId) googleWrap.hidden = false;
-    if (loginDivider && googleClientId) loginDivider.hidden = false;
-  }
-
-  function showCodeStep(phone) {
-    pendingPhone = phone;
-    if (phoneForm) phoneForm.hidden = true;
-    if (codeForm) codeForm.hidden = false;
-    if (googleWrap) googleWrap.hidden = true;
-    if (loginDivider) loginDivider.hidden = true;
-    if (sentHint) {
-      sentHint.textContent = "کد تأیید به شماره " + formatPhoneDisplay(phone) + " ارسال شد.";
-    }
-    if (otpInput) {
-      otpInput.value = "";
-      otpInput.focus();
-    }
-    startResendCooldown();
-  }
-
-  function clearResendTimer() {
-    if (resendTimer) {
-      clearInterval(resendTimer);
-      resendTimer = null;
-    }
-    resendSecondsLeft = 0;
-  }
-
-  function updateResendButton() {
-    if (!btnResend) return;
-    if (resendSecondsLeft > 0) {
-      btnResend.disabled = true;
-      btnResend.textContent = "ارسال دوباره (" + resendSecondsLeft + ")";
-    } else {
-      btnResend.disabled = false;
-      btnResend.textContent = "ارسال دوباره کد";
-    }
-  }
-
-  function startResendCooldown() {
-    clearResendTimer();
-    resendSecondsLeft = 60;
-    updateResendButton();
-    resendTimer = setInterval(function () {
-      resendSecondsLeft -= 1;
-      if (resendSecondsLeft <= 0) {
-        clearResendTimer();
-      }
-      updateResendButton();
-    }, 1000);
   }
 
   function redirectAfterAuth(user) {
@@ -136,9 +43,6 @@
     }
     if (err && err.message === "Failed to fetch") {
       return "اتصال به سرور برقرار نشد. بک‌اند را اجرا کن.";
-    }
-    if (err && err.data && err.data.error) {
-      return err.data.error;
     }
     if (err && err.message) {
       return err.message;
@@ -157,164 +61,255 @@
     return true;
   }
 
-  async function sendOtp(phone, triggerBtn) {
-    showError("");
-    if (!isValidPhone(phone)) {
-      showError("شماره موبایل معتبر نیست. مثال: ۰۹۱۲۳۴۵۶۷۸۹");
-      return false;
+  function normalizePhoneInput(value) {
+    var persian = "۰۱۲۳۴۵۶۷۸۹";
+    var arabic = "٠١٢٣٤٥٦٧٨٩";
+    var digits = String(value || "").replace(/[۰-۹٠-٩]/g, function (ch) {
+      var p = persian.indexOf(ch);
+      if (p >= 0) return String(p);
+      var a = arabic.indexOf(ch);
+      return a >= 0 ? String(a) : ch;
+    }).replace(/\D/g, "");
+
+    if (digits.startsWith("98") && digits.length === 12) {
+      digits = "0" + digits.slice(2);
     }
-    if (!window.StorytellingAPI || !window.StorytellingAPI.requestOtp) {
-      showError("سرویس ورود در دسترس نیست.");
-      return false;
+    if (digits.startsWith("9") && digits.length === 10) {
+      digits = "0" + digits;
+    }
+    return digits;
+  }
+
+  function showOtpStep(phone, hintText) {
+    pendingPhone = phone;
+    if (phoneInput) {
+      phoneInput.value = phone;
+      phoneInput.readOnly = true;
+    }
+    if (otpGroup) otpGroup.hidden = false;
+    if (btnSendOtp) btnSendOtp.hidden = true;
+    if (btnVerifyOtp) btnVerifyOtp.hidden = false;
+    if (btnChangePhone) btnChangePhone.hidden = false;
+    if (otpHint) {
+      if (hintText) {
+        otpHint.textContent = hintText;
+        otpHint.hidden = false;
+      } else {
+        otpHint.hidden = true;
+        otpHint.textContent = "";
+      }
+    }
+    if (otpInput) {
+      otpInput.value = "";
+      otpInput.focus();
+    }
+  }
+
+  function showPhoneStep() {
+    pendingPhone = "";
+    if (phoneInput) {
+      phoneInput.readOnly = false;
+      phoneInput.focus();
+    }
+    if (otpGroup) otpGroup.hidden = true;
+    if (btnSendOtp) btnSendOtp.hidden = false;
+    if (btnVerifyOtp) btnVerifyOtp.hidden = true;
+    if (btnChangePhone) btnChangePhone.hidden = true;
+    if (otpHint) {
+      otpHint.hidden = true;
+      otpHint.textContent = "";
+    }
+    if (otpInput) otpInput.value = "";
+    showError("");
+  }
+
+  async function saveAndRedirect(result) {
+    try {
+      window.StorytellingAuth.saveSession(result.token, result.user);
+    } catch (sessionErr) {
+      showError(sessionErr.message || "ذخیره ورود در دستگاه ممکن نیست.");
+      return;
+    }
+    redirectAfterAuth(result.user);
+  }
+
+  async function sendOtp() {
+    showError("");
+    var phone = normalizePhoneInput(phoneInput && phoneInput.value);
+    if (!phone || phone.length < 11) {
+      showError("شماره موبایل را وارد کن.");
+      return;
     }
 
-    setLoading(triggerBtn, true);
+    setLoading(btnSendOtp, true);
     try {
       var result = await window.StorytellingAPI.requestOtp(phone);
-      if (result && result.debugHint) {
-        showError(result.debugHint);
-      }
-      showCodeStep(result.phone || phone);
-      return true;
+      var hint = result.debugHint
+        ? "حالت تست: کد " + result.debugHint
+        : "کد تأیید به شماره " + (result.phone || phone) + " ارسال شد.";
+      showOtpStep(result.phone || phone, hint);
     } catch (err) {
       showError(resolveAuthError(err, "ارسال کد ناموفق بود."));
-      return false;
     } finally {
-      setLoading(triggerBtn, false);
+      setLoading(btnSendOtp, false);
     }
   }
 
-  async function verifyOtp(phone, code, triggerBtn) {
+  async function verifyOtp() {
     showError("");
-    var normalizedCode = toEnglishDigits(code).replace(/\D/g, "");
-    if (!/^\d{4,8}$/.test(normalizedCode)) {
-      showError("کد تأیید را درست وارد کن.");
+    var phone = pendingPhone || normalizePhoneInput(phoneInput && phoneInput.value);
+    var code = String((otpInput && otpInput.value) || "").replace(/\D/g, "");
+
+    if (!phone) {
+      showError("شماره موبایل را وارد کن.");
+      return;
+    }
+    if (!code || code.length < 4) {
+      showError("کد تأیید را وارد کن.");
       return;
     }
     if (!ensureAndroidReady()) return;
 
-    setLoading(triggerBtn, true);
+    setLoading(btnVerifyOtp, true);
     try {
-      var result = await window.StorytellingAPI.verifyOtp(phone, normalizedCode);
-      try {
-        window.StorytellingAuth.saveSession(result.token, result.user);
-      } catch (sessionErr) {
-        showError(sessionErr.message || "ذخیره ورود در دستگاه ممکن نیست.");
-        return;
-      }
-      redirectAfterAuth(result.user);
+      var result = await window.StorytellingAPI.verifyOtp(phone, code);
+      await saveAndRedirect(result);
     } catch (err) {
-      showError(resolveAuthError(err, "تأیید کد ناموفق بود."));
+      showError(resolveAuthError(err, "ورود ناموفق بود."));
     } finally {
-      setLoading(triggerBtn, false);
+      setLoading(btnVerifyOtp, false);
     }
   }
 
-  async function handleGoogleCredential(response) {
-    showError("");
-    if (!response || !response.credential) {
-      showError("ورود با گوگل ناموفق بود.");
-      return;
+  function loadGoogleScript() {
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+      return Promise.resolve();
     }
-    if (!ensureAndroidReady()) return;
+    if (googleScriptLoading) return googleScriptLoading;
 
-    try {
-      var result = await window.StorytellingAPI.loginWithGoogle(response.credential);
-      try {
-        window.StorytellingAuth.saveSession(result.token, result.user);
-      } catch (sessionErr) {
-        showError(sessionErr.message || "ذخیره ورود در دستگاه ممکن نیست.");
+    googleScriptLoading = new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-google-gsi="1"]');
+      if (existing) {
+        existing.addEventListener("load", function () { resolve(); });
+        existing.addEventListener("error", function () {
+          reject(new Error("بارگذاری سرویس گوگل ناموفق بود."));
+        });
         return;
       }
-      redirectAfterAuth(result.user);
+
+      var script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleGsi = "1";
+      script.onload = function () { resolve(); };
+      script.onerror = function () {
+        googleScriptLoading = null;
+        reject(new Error("بارگذاری سرویس گوگل ناموفق بود."));
+      };
+      document.head.appendChild(script);
+    });
+
+    return googleScriptLoading;
+  }
+
+  async function ensureGoogleClientId() {
+    if (googleClientId) return googleClientId;
+    if (typeof window.GOOGLE_CLIENT_ID === "string" && window.GOOGLE_CLIENT_ID) {
+      googleClientId = window.GOOGLE_CLIENT_ID;
+      return googleClientId;
+    }
+
+    var providers = await window.StorytellingAPI.getAuthProviders();
+    googleClientId = providers && providers.google && providers.google.clientId
+      ? providers.google.clientId
+      : "";
+    return googleClientId;
+  }
+
+  function completeGoogleLogin(accessToken) {
+    if (!ensureAndroidReady()) return;
+    setLoading(btnGoogle, true);
+    showError("");
+    window.StorytellingAPI.loginWithGoogleAccessToken(accessToken)
+      .then(function (result) {
+        return saveAndRedirect(result);
+      })
+      .catch(function (err) {
+        showError(resolveAuthError(err, "ورود با گوگل ناموفق بود."));
+      })
+      .finally(function () {
+        setLoading(btnGoogle, false);
+      });
+  }
+
+  async function signInWithGoogle() {
+    showError("");
+    setLoading(btnGoogle, true);
+
+    try {
+      var clientId = await ensureGoogleClientId();
+      if (!clientId) {
+        showError("ورود با گوگل هنوز پیکربندی نشده است. GOOGLE_CLIENT_ID را در سرور تنظیم کن.");
+        setLoading(btnGoogle, false);
+        return;
+      }
+
+      await loadGoogleScript();
+
+      if (!googleTokenClient) {
+        googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: "openid email profile",
+          callback: function (tokenResponse) {
+            if (!tokenResponse || tokenResponse.error || !tokenResponse.access_token) {
+              showError("ورود با گوگل لغو شد یا ناموفق بود.");
+              setLoading(btnGoogle, false);
+              return;
+            }
+            completeGoogleLogin(tokenResponse.access_token);
+          },
+          error_callback: function () {
+            showError("ورود با گوگل لغو شد یا ناموفق بود.");
+            setLoading(btnGoogle, false);
+          },
+        });
+      }
+
+      // Opens Google account picker directly — no email/password in our app.
+      googleTokenClient.requestAccessToken({ prompt: "select_account" });
     } catch (err) {
       showError(resolveAuthError(err, "ورود با گوگل ناموفق بود."));
+      setLoading(btnGoogle, false);
     }
   }
 
-  function renderGoogleButton(clientId) {
-    if (!clientId || !googleBtnHost || !googleWrap) return;
-
-    function init() {
-      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
-        return false;
-      }
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredential,
-        ux_mode: "popup",
-        auto_select: false,
-      });
-      googleBtnHost.innerHTML = "";
-      window.google.accounts.id.renderButton(googleBtnHost, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: "continue_with",
-        shape: "pill",
-        width: Math.min(320, googleBtnHost.clientWidth || 280),
-        locale: "fa",
-      });
-      googleWrap.hidden = false;
-      if (loginDivider) loginDivider.hidden = false;
-      return true;
-    }
-
-    if (init()) return;
-
-    var tries = 0;
-    var timer = setInterval(function () {
-      tries += 1;
-      if (init() || tries > 40) {
-        clearInterval(timer);
-        if (tries > 40 && googleWrap) {
-          googleWrap.hidden = true;
-          if (loginDivider) loginDivider.hidden = true;
-        }
-      }
-    }, 150);
-  }
-
-  async function loadAuthConfig() {
-    if (!window.StorytellingAPI || !window.StorytellingAPI.getAuthConfig) return;
-    try {
-      var config = await window.StorytellingAPI.getAuthConfig();
-      googleClientId = config && config.googleClientId ? config.googleClientId : null;
-      if (googleClientId) {
-        renderGoogleButton(googleClientId);
-      }
-    } catch (err) {
-      console.warn("[login] auth config unavailable", err);
-    }
-  }
-
-  if (phoneForm) {
-    phoneForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var phone = normalizePhoneInput(phoneInput && phoneInput.value);
-      if (phoneInput) phoneInput.value = phone;
-      sendOtp(phone, btnRequest);
-    });
-  }
-
-  if (codeForm) {
-    codeForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      verifyOtp(pendingPhone, otpInput && otpInput.value, btnVerify);
-    });
-  }
-
-  if (btnResend) {
-    btnResend.addEventListener("click", function () {
-      if (resendSecondsLeft > 0 || !pendingPhone) return;
-      sendOtp(pendingPhone, btnResend);
+  if (btnSendOtp) {
+    btnSendOtp.addEventListener("click", function () {
+      sendOtp();
     });
   }
 
   if (btnChangePhone) {
     btnChangePhone.addEventListener("click", function () {
       showPhoneStep();
-      if (phoneInput) phoneInput.focus();
+    });
+  }
+
+  if (btnGoogle) {
+    btnGoogle.addEventListener("click", function () {
+      signInWithGoogle();
+    });
+  }
+
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (otpGroup && !otpGroup.hidden) {
+        verifyOtp();
+      } else {
+        sendOtp();
+      }
     });
   }
 
@@ -335,5 +330,5 @@
   }
 
   applyLoginBackground();
-  loadAuthConfig();
+  ensureGoogleClientId().catch(function () {});
 })();

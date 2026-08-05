@@ -128,14 +128,21 @@
     });
   }
 
-  async function getAuthConfig() {
-    return request(apiUrl("/api/auth/config"), { method: "GET" });
+  async function getAuthProviders() {
+    return request(apiUrl("/api/auth/providers"), { method: "GET" });
   }
 
-  async function loginWithGoogle(credential) {
+  async function loginWithGoogle(idToken) {
     return request(apiUrl("/api/auth/google"), {
       method: "POST",
-      body: JSON.stringify(Object.assign({ credential: credential }, getAuthDevicePayload())),
+      body: JSON.stringify(Object.assign({ idToken: idToken }, getAuthDevicePayload())),
+    });
+  }
+
+  async function loginWithGoogleAccessToken(accessToken) {
+    return request(apiUrl("/api/auth/google"), {
+      method: "POST",
+      body: JSON.stringify(Object.assign({ accessToken: accessToken }, getAuthDevicePayload())),
     });
   }
 
@@ -241,8 +248,9 @@
     register,
     requestOtp,
     verifyOtp,
-    getAuthConfig,
+    getAuthProviders,
     loginWithGoogle,
+    loginWithGoogleAccessToken,
     getMe,
     updateChildProfile,
     getQuota,

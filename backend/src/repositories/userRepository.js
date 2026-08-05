@@ -10,22 +10,22 @@ const findByEmailStmt = db.prepare('SELECT * FROM users WHERE email = ?');
 const findByPhoneStmt = db.prepare('SELECT * FROM users WHERE phone = ?');
 const findByGoogleIdStmt = db.prepare('SELECT * FROM users WHERE google_id = ?');
 const findByIdStmt = db.prepare('SELECT * FROM users WHERE id = ?');
+const linkGoogleIdStmt = db.prepare(`
+  UPDATE users SET
+    google_id = @googleId,
+    avatar_url = COALESCE(avatar_url, @avatarUrl),
+    display_name = CASE
+      WHEN display_name IS NULL OR display_name = '' OR display_name = 'والد' THEN @displayName
+      ELSE display_name
+    END
+  WHERE id = @userId
+`);
 const updateChildProfileStmt = db.prepare(`
   UPDATE users SET
     child_gender = @childGender,
     child_avatar_url = @childAvatarUrl,
     child_name = @childName,
     display_name = @displayName
-  WHERE id = @userId
-`);
-const linkGoogleStmt = db.prepare(`
-  UPDATE users SET
-    google_id = @googleId,
-    avatar_url = COALESCE(avatar_url, @avatarUrl),
-    display_name = CASE
-      WHEN display_name IS NULL OR trim(display_name) = '' OR display_name = 'والد' THEN @displayName
-      ELSE display_name
-    END
   WHERE id = @userId
 `);
 
@@ -93,28 +93,36 @@ export function createOrGetUserByPhone(phone) {
   return { user, created: true };
 }
 
-export function createOrGetUserByGoogle({ googleId, email, displayName, avatarUrl = null }) {
+export function createOrGetUserByGoogle({ googleId, email, name, picture }) {
+  if (!googleId) {
+    throw new Error('googleId is required');
+  }
+
   const byGoogle = findByGoogleIdStmt.get(googleId);
   if (byGoogle) {
     return { user: mapUserRow(byGoogle), created: false };
   }
 
-  const byEmail = findByEmailStmt.get(String(email).toLowerCase().trim());
-  if (byEmail) {
-    linkGoogleStmt.run({
-      userId: byEmail.id,
-      googleId,
-      avatarUrl,
-      displayName: displayName || byEmail.display_name || 'والد',
-    });
-    return { user: findById(byEmail.id), created: false };
+  const normalizedEmail = email ? String(email).toLowerCase().trim() : '';
+  if (normalizedEmail) {
+    const byEmail = findByEmailStmt.get(normalizedEmail);
+    if (byEmail) {
+      linkGoogleIdStmt.run({
+        userId: byEmail.id,
+        googleId,
+        avatarUrl: picture || null,
+        displayName: (name && String(name).trim()) || byEmail.display_name || 'والد',
+      });
+      return { user: findById(byEmail.id), created: false };
+    }
   }
 
+  const fallbackEmail = normalizedEmail || `google_${googleId}@google.lalabye.local`;
   const user = createUser({
-    email,
+    email: fallbackEmail,
     passwordHash: hashPassword(`google:${googleId}:${Date.now()}`),
-    displayName: displayName || 'والد',
-    avatarUrl,
+    displayName: (name && String(name).trim()) || 'والد',
+    avatarUrl: picture || null,
     googleId,
   });
 
@@ -132,11 +140,6 @@ export function getUserByEmail(email) {
 export function getUserByPhone(phone) {
   if (!phone) return null;
   return mapUserRow(findByPhoneStmt.get(phone), true);
-}
-
-export function getUserByGoogleId(googleId) {
-  if (!googleId) return null;
-  return mapUserRow(findByGoogleIdStmt.get(googleId), true);
 }
 
 export function getUserById(id) {
@@ -171,6 +174,7 @@ export function toPublicUser(user) {
     id: user.id,
     email: user.email,
     phone: user.phone || null,
+    googleId: user.googleId || null,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
     childGender: user.childGender || null,

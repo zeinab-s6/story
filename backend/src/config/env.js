@@ -144,22 +144,30 @@ export const env = {
   DAILY_STORY_LIMIT: Number(process.env.DAILY_STORY_LIMIT) || 2,
   OTP_MODE: (process.env.OTP_MODE || 'mock').toLowerCase(),
   OTP_MOCK_CODE: (process.env.OTP_MOCK_CODE || '123456').trim(),
-  KAVENEGAR_API_KEY: (process.env.KAVENEGAR_API_KEY || '').trim(),
-  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || 'lalaByesignup').trim(),
+  MELIPAYAMAK_TOKEN: (process.env.MELIPAYAMAK_TOKEN || '').trim(),
+  MELIPAYAMAK_BODY_ID: Number(process.env.MELIPAYAMAK_BODY_ID) || 0,
+  MELIPAYAMAK_PATTERN_NAME: (process.env.MELIPAYAMAK_PATTERN_NAME || 'lalaByesignup').trim(),
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
 
+if (!['mock', 'sms'].includes(env.OTP_MODE)) {
+  throw new Error('OTP_MODE باید mock یا sms باشد.');
+}
+
+if (env.OTP_MODE === 'sms') {
+  if (!env.MELIPAYAMAK_TOKEN) {
+    throw new Error('MELIPAYAMAK_TOKEN برای OTP_MODE=sms الزامی است.');
+  }
+  if (!env.MELIPAYAMAK_BODY_ID) {
+    throw new Error(
+      'MELIPAYAMAK_BODY_ID (کد متن عددی الگو در پنل ملی‌پیامک) برای OTP_MODE=sms الزامی است.'
+    );
+  }
+}
+
 if (isProduction && !env.JWT_SECRET?.trim()) {
   throw new Error('JWT_SECRET در production الزامی است.');
-}
-
-if (env.OTP_MODE === 'kavenegar' && !env.KAVENEGAR_API_KEY) {
-  throw new Error('KAVENEGAR_API_KEY برای OTP_MODE=kavenegar الزامی است.');
-}
-
-if (!['mock', 'kavenegar'].includes(env.OTP_MODE)) {
-  throw new Error('OTP_MODE باید mock یا kavenegar باشد.');
 }
 
 export default env;

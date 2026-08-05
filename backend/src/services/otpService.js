@@ -1,7 +1,7 @@
 /**
- * OTP / SMS gateway.
- * OTP_MODE=mock     → fixed code (OTP_MOCK_CODE), no SMS
- * OTP_MODE=kavenegar → Kavenegar verify/lookup with SMS_OTP_TEMPLATE
+ * OTP / SMS gateway abstraction.
+ * OTP_MODE=mock — fixed code for local/dev (OTP_MOCK_CODE).
+ * OTP_MODE=sms — Melipayamak shared pattern (کنسول ملی‌پیامک).
  */
 
 import env from '../config/env.js';
@@ -10,6 +10,7 @@ const otpStore = new Map();
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
+const MELIPAYAMAK_SHARED_URL = 'https://console.melipayamak.com/api/send/shared';
 
 function normalizePhone(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
@@ -34,93 +35,79 @@ function generateCode() {
 }
 
 /**
- * Accept plain Kavenegar keys or hex-encoded tokens from the panel.
+ * Melipayamak shared-pattern SMS (خط خدماتی اشتراکی).
+ * @param {string} phone
+ * @param {string} code
  */
-function resolveKavenegarApiKey() {
-  const raw = env.KAVENEGAR_API_KEY;
-  if (!raw) return '';
-  if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0 && raw.length >= 40) {
-    try {
-      const decoded = Buffer.from(raw, 'hex').toString('utf8');
-      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
-        return decoded;
-      }
-    } catch {
-      /* use raw */
-    }
+async function sendMelipayamakSms(phone, code) {
+  const token = env.MELIPAYAMAK_TOKEN;
+  const bodyId = env.MELIPAYAMAK_BODY_ID;
+
+  if (!token) {
+    throw new Error('توکن ملی‌پیامک پیکربندی نشده است.');
   }
-  return raw;
-}
-
-async function sendSmsViaKavenegar(phone, code) {
-  const apiKey = resolveKavenegarApiKey();
-  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup';
-
-  if (!apiKey) {
-    const error = new Error('کلید API کاوه‌نگار تنظیم نشده است.');
-    error.statusCode = 500;
-    throw error;
+  if (!bodyId) {
+    throw new Error(
+      'کد متن الگوی ملی‌پیامک (MELIPAYAMAK_BODY_ID) تنظیم نشده است. ' +
+        'در پنل، ستون «کد متن» کنار الگوی lalaByesignup را وارد کنید.'
+    );
   }
 
-  const params = new URLSearchParams({
-    receptor: phone,
-    token: code,
-    template,
+  const response = await fetch(`${MELIPAYAMAK_SHARED_URL}/${token}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bodyId,
+      to: phone,
+      args: [code],
+    }),
   });
 
-  const url = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/verify/lookup.json?${params.toString()}`;
-
-  let response;
+  let data = null;
   try {
-    response = await fetch(url, { method: 'GET' });
-  } catch (err) {
-    const error = new Error('خطا در اتصال به سرویس پیامک.');
-    error.statusCode = 502;
-    if (env.isDevelopment) {
-      error.details = err.message;
-    }
-    throw error;
-  }
-
-  let payload = null;
-  try {
-    payload = await response.json();
+    data = await response.json();
   } catch {
-    const error = new Error('پاسخ نامعتبر از سرویس پیامک.');
-    error.statusCode = 502;
-    throw error;
+    data = null;
   }
 
-  const returnStatus = payload?.return?.status;
-  const returnMessage = payload?.return?.message;
-
-  if (!response.ok || (returnStatus != null && Number(returnStatus) !== 200)) {
-    const error = new Error(
-      returnMessage
-        ? `ارسال پیامک ناموفق بود: ${returnMessage}`
-        : 'ارسال پیامک ناموفق بود.',
-    );
-    error.statusCode = 502;
-    if (env.isDevelopment) {
-      error.details = JSON.stringify(payload?.return || payload || {}).slice(0, 400);
-    }
-    throw error;
+  if (!response.ok) {
+    const detail = (data && (data.status || data.message || data.error)) || response.statusText;
+    throw new Error(detail ? `ارسال پیامک ناموفق بود: ${detail}` : 'ارسال پیامک ناموفق بود.');
   }
 
-  return { sent: true, provider: 'kavenegar' };
+  const status = data && data.status != null ? String(data.status).trim() : '';
+  if (status) {
+    throw new Error(status);
+  }
+
+  const recId = Number(data && data.recId);
+  if (!Number.isFinite(recId) || recId <= 0) {
+    throw new Error('ارسال پیامک ناموفق بود.');
+  }
+
+  return {
+    sent: true,
+    provider: 'melipayamak',
+    recId: String(recId),
+    pattern: env.MELIPAYAMAK_PATTERN_NAME || undefined,
+  };
 }
 
+/**
+ * @param {string} phone
+ * @param {string} code
+ */
 async function sendSms(phone, code) {
   if (env.OTP_MODE === 'mock') {
     console.info(`[otp:mock] SMS to ${phone}: code=${code}`);
     return { sent: true, provider: 'mock' };
   }
 
-  if (env.OTP_MODE === 'kavenegar') {
-    return sendSmsViaKavenegar(phone, code);
+  if (env.OTP_MODE === 'sms') {
+    return sendMelipayamakSms(phone, code);
   }
 
-  throw new Error(`حالت OTP نامعتبر است: ${env.OTP_MODE}`);
+  throw new Error('سرویس پیامک هنوز پیکربندی نشده است.');
 }
 
 export function validatePhone(rawPhone) {
@@ -165,7 +152,7 @@ export async function requestOtp(rawPhone) {
     return {
       ok: false,
       error: err.message || 'ارسال پیامک ناموفق بود.',
-      status: err.statusCode || 502,
+      status: 502,
     };
   }
 
@@ -173,9 +160,7 @@ export async function requestOtp(rawPhone) {
     ok: true,
     phone,
     expiresInSec: Math.floor(OTP_TTL_MS / 1000),
-    ...(env.OTP_MODE === 'mock' && env.isDevelopment
-      ? { debugHint: `کد تست: ${code}` }
-      : {}),
+    ...(env.OTP_MODE === 'mock' ? { debugHint: code } : {}),
   };
 }
 

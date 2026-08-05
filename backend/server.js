@@ -26,10 +26,16 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", 'data:', 'blob:'],
-        connectSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://*.googleusercontent.com'],
+        connectSrc: [
+          "'self'",
+          'https://accounts.google.com',
+          'https://oauth2.googleapis.com',
+          'https://www.googleapis.com',
+        ],
+        frameSrc: ["'self'", 'https://accounts.google.com'],
         mediaSrc: ["'self'", 'blob:'],
         fontSrc: ["'self'", 'data:'],
       },

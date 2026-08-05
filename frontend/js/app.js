@@ -806,7 +806,7 @@
     ensureStoryAudioUrl();
     if (!state.audioFullUrl) return Promise.resolve(false);
     if (useApiPlayback()) {
-      return ensureStoryAudioReady({ reportError: true }).then(function (ready) {
+      return ensureStoryAudioReady({ reportError: false }).then(function (ready) {
         if (!ready || !audioElement) return false;
         applyStoryPlaybackSettings(audioElement);
         return audioElement.play()
@@ -818,7 +818,6 @@
           .catch(function () {
             syncNativeBackgroundAmbience(false);
             syncPlayingState(false);
-            showToast("برای پخش، دکمه پلی پلیر را بزن.", "info");
             return false;
           });
       });
@@ -978,9 +977,6 @@
       }
       state.audioFullUrl = null;
       state.audioResult = null;
-      if (options.reportError) {
-        showError(formatApiError(e, "دریافت فایل صوتی ناموفق بود."));
-      }
       updatePrimaryButton();
       updateDownloadControls();
       updateHomePlayCard();
@@ -1255,7 +1251,6 @@
 
   function playWithVoiceSettings(url) {
     if (!window.VoicePlayer) {
-      showError("پخش‌کننده صدا در دسترس نیست.");
       return Promise.resolve(false);
     }
     return window.VoicePlayer.toggle(url, getEffectiveVoiceSettings(), getVoicePlaybackOptions())
@@ -1263,9 +1258,8 @@
         syncPlayingState(playing);
         return playing;
       })
-      .catch(function (e) {
+      .catch(function () {
         syncPlayingState(false);
-        showError(e.message || "پخش صدا ناموفق بود.");
         return false;
       });
   }
@@ -1618,12 +1612,6 @@
     $$(".story-play-scrubber").forEach(resetListPlayScrubber);
   }
 
-  function getHistoryItemDownloadFilename(item) {
-    var voice = getVoiceById(item && item.voiceId);
-    var slug = (voice && voice.id) || "voice";
-    return "lalaBye-" + ((item && item.storyId) || "story") + "-" + slug + "." + STORY_AUDIO_FORMAT;
-  }
-
   async function resolveHistoryItemAudioUrl(item) {
     if (!item) return null;
 
@@ -1711,7 +1699,7 @@
     try {
       var url = await resolveHistoryItemAudioUrl(item);
       if (!url) {
-        showError("فایل صوتی این قصه هنوز آماده نیست.");
+        stopListAudioPlayback();
         return false;
       }
 
@@ -1734,40 +1722,12 @@
       updateHistoryCardPlayButtons();
       return true;
     } catch (e) {
-      showError(formatApiError(e, "پخش صدا ناموفق بود."));
+      stopListAudioPlayback();
       return false;
     } finally {
       listAudioLoadingStoryId = null;
       if (playBtn) playBtn.disabled = false;
       updateHistoryCardPlayButtons();
-    }
-  }
-
-  async function downloadHistoryItemInline(item, downloadBtn) {
-    if (!item || !item.storyId) {
-      showError("اطلاعات این قصه کامل نیست.");
-      return false;
-    }
-
-    if (downloadBtn) downloadBtn.disabled = true;
-
-    try {
-      var url = await resolveHistoryItemAudioUrl(item);
-      if (!url) {
-        showError("فایل صوتی این قصه هنوز آماده نیست.");
-        return false;
-      }
-
-      var filename = getHistoryItemDownloadFilename(item);
-      var fetchUrl = url.indexOf("?") === -1 ? url + "?download=1" : url + "&download=1";
-      var blob = await fetchStoryAudioBlob(fetchUrl);
-      await triggerFileDownload(blob, filename);
-      return true;
-    } catch (e) {
-      showError(formatApiError(e, "دانلود فایل صوتی ناموفق بود."));
-      return false;
-    } finally {
-      if (downloadBtn) downloadBtn.disabled = false;
     }
   }
 
@@ -2019,6 +1979,10 @@
     var container = $("#toast-container");
     if (!container) return;
 
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
     var toast = document.createElement("div");
     toast.className = "toast toast--" + type;
     toast.textContent = message;
@@ -2042,7 +2006,6 @@
       subtitle.textContent = message;
       subtitle.classList.toggle("voice-lib-subtitle--error", !!isError);
     }
-    if (isError) showToast(message, "error");
   }
 
   function showHomeAudioFeedback(message) {
@@ -3162,9 +3125,6 @@
       '</div>' +
       '<div class="story-accordion__row-actions">' +
         '<button type="button" class="btn btn--ghost btn--sm history-restore">خواندن کامل</button>' +
-        '<button type="button" class="btn btn--ghost btn--sm history-download" aria-label="دانلود قصه">' +
-          '<span class="app-icon app-icon--sm" data-icon="download"></span> دانلود' +
-        '</button>' +
       '</div>';
 
     body.appendChild(textEl);
@@ -3186,14 +3146,6 @@
       e.stopPropagation();
       playHistoryItemInline(item, playBtn);
     });
-
-    var downloadBtn = card.querySelector(".history-download");
-    if (downloadBtn) {
-      downloadBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        downloadHistoryItemInline(item, downloadBtn);
-      });
-    }
 
     var restoreBtn = card.querySelector(".history-restore");
     var isFullText = false;
@@ -3539,9 +3491,7 @@
       renderStoriesPanel();
       if (isQuotaBlocked()) {
         openQuotaModal(getQuotaBlockedMessage());
-      } else if (audioReady) {
-        showToast("قصه و صدا در «قصه‌های من» آماده‌اند.", "success");
-      } else {
+      } else if (!audioReady) {
         showToast("قصه ساخته شد. می‌توانی از بخش راوی دوباره تلاش کنی.", "info");
       }
     } catch (e) {
@@ -3668,16 +3618,12 @@
           writeUserStorage("history", JSON.stringify(state.history));
           renderHistory();
         }
-        if (!options.suppressToast) {
-          showToast("نمونه صدا آماده است — اسلایدرها را تغییر بده و پخش کن.", "success");
-        }
         if (options.autoPlay) {
           await playGeneratedStoryAudio();
         }
         return true;
       } catch (e) {
         if (e.name === "AbortError") throw e;
-        showError(formatApiError(e, "ساخت فایل صوتی ناموفق بود، اما قصه همچنان قابل استفاده است."));
         return false;
       } finally {
         state.isGeneratingAudio = false;
@@ -3727,16 +3673,12 @@
       updateCenterCardState();
       updateHomePlayCard();
       if (!ready) return false;
-      if (!options.suppressToast) {
-        showToast("فایل صوتی آماده است!", "success");
-      }
       if (options.autoPlay) {
         await playGeneratedStoryAudio();
       }
       return true;
     } catch (e) {
       if (e.name === "AbortError") throw e;
-      showError(formatApiError(e, "ساخت فایل صوتی ناموفق بود، اما قصه همچنان قابل استفاده است."));
       return false;
     } finally {
       state.isGeneratingAudio = false;
@@ -3756,11 +3698,8 @@
       if (!ensureStoryAudioUrl()) {
         if (!state.storyId) return;
         unlockAudioForUserGesture();
-        var generated = await handleGenerateAudio({ autoPlay: true, suppressToast: true });
+        await handleGenerateAudio({ autoPlay: true, suppressToast: true });
         updateHomePlayCard();
-        if (!generated) {
-          showError("ساخت فایل صوتی ناموفق بود. دوباره تلاش کن.");
-        }
         return;
       }
 
@@ -3781,9 +3720,8 @@
       stopListAudioPlayback();
 
       if (!isStoryAudioHydrated()) {
-        var ready = await ensureStoryAudioReady({ reportError: true });
+        var ready = await ensureStoryAudioReady({ reportError: false });
         if (!ready) {
-          showError("فایل صوتی هنوز آماده نیست. دوباره تلاش کن.");
           updateHomePlayCard();
           return;
         }
@@ -3799,7 +3737,6 @@
         .catch(function () {
           syncNativeBackgroundAmbience(false);
           syncPlayingState(false);
-          showError("پخش صدا ناموفق بود. دوباره تلاش کن.");
         });
       updateHomePlayCard();
       return;
@@ -3840,7 +3777,6 @@
       ready = await handleGenerateAudio({ suppressToast: true });
     }
     if (!ready) {
-      showError("هنوز فایل صوتی آماده نیست. چند لحظه صبر کن و دوباره بزن.");
       return;
     }
 
@@ -3858,7 +3794,6 @@
         }
       }
       if (!blob) {
-        showError("هنوز فایل صوتی آماده نیست.");
         return;
       }
       await triggerFileDownload(blob, filename);
@@ -3879,7 +3814,6 @@
           /* fall through */
         }
       }
-      showError(formatApiError(e, "دانلود فایل صوتی ناموفق بود."));
     } finally {
       state.isDownloading = false;
       updateDownloadControls();
@@ -4124,8 +4058,7 @@
 
     $("#btn-home-play") && $("#btn-home-play").addEventListener("click", function () {
       if (!shouldShowHomePlayCard()) return;
-      togglePlayPause().catch(function (err) {
-        showError(formatApiError(err, "پخش صدا ناموفق بود."));
+      togglePlayPause().catch(function () {
         updateHomePlayCard();
       });
     });
