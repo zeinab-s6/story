@@ -1,9 +1,8 @@
 /**
- * OTP / SMS gateway via Kavenegar REST API.
- * @see https://kavenegar.com/rest.html — verify/lookup (اعتبارسنجی)
+ * OTP via Kavenegar Verify Lookup (پنل کاوه‌نگار).
+ * @see https://kavenegar.com/rest.html
  *
- * OTP_MODE=mock      → fixed code (OTP_MOCK_CODE), no SMS
- * OTP_MODE=kavenegar → GET verify/lookup.json with receptor, token, template
+ * GET /v1/{API-KEY}/verify/lookup.json?receptor=&token=&template=
  */
 import { env } from '../config/env.js';
 
@@ -13,7 +12,6 @@ const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
 const KAVENEGAR_LOOKUP_URL = 'https://api.kavenegar.com/v1';
 
-/** Kavenegar Lookup error codes from REST docs. */
 const KAVENEGAR_LOOKUP_ERRORS = {
   418: 'اعتبار حساب کاوه‌نگار کافی نیست.',
   422: 'داده‌های ارسالی قابل پردازش نیست.',
@@ -40,47 +38,18 @@ function normalizePhone(raw) {
 }
 
 function generateCode() {
-  if (env.OTP_MODE === 'mock') {
-    return env.OTP_MOCK_CODE;
-  }
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-/**
- * Kavenegar API keys are placed verbatim in the URL path (often hex strings).
- */
+/** Kavenegar API key goes in the URL path as-is (often a hex string). */
 function resolveKavenegarApiKey() {
-  const raw = String(env.KAVENEGAR_API_KEY || '').trim();
-  if (!raw) return '';
-
-  if (/^[0-9A-Fa-f]{20,}$/.test(raw)) {
-    return raw;
-  }
-
-  if (/^[0-9A-Fa-f]+$/.test(raw) && raw.length % 2 === 0) {
-    try {
-      const decoded = Buffer.from(raw, 'hex').toString('utf8');
-      if (decoded && /^[\x20-\x7E]+$/.test(decoded) && decoded.length >= 8) {
-        return decoded;
-      }
-    } catch {
-      /* use raw */
-    }
-  }
-
-  return raw;
+  return String(env.KAVENEGAR_API_KEY || '').trim();
 }
 
 function mapKavenegarError(status, fallbackMessage) {
-  const mapped = KAVENEGAR_LOOKUP_ERRORS[Number(status)];
-  if (mapped) return mapped;
-  return fallbackMessage || 'ارسال پیامک با خطا مواجه شد.';
+  return KAVENEGAR_LOOKUP_ERRORS[Number(status)] || fallbackMessage || 'ارسال پیامک با خطا مواجه شد.';
 }
 
-/**
- * Kavenegar Verify Lookup — receptor + token + template
- * Example: GET /v1/{API-KEY}/verify/lookup.json?receptor=09...&token=123456&template=lalaByesignup18:40
- */
 async function sendSmsViaKavenegar(phone, code) {
   const apiKey = resolveKavenegarApiKey();
   const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup18:40';
@@ -132,30 +101,8 @@ async function sendSmsViaKavenegar(phone, code) {
     return { sent: false, error: 'پاسخ خالی از سرویس پیامک.' };
   }
 
+  console.info('[otp:kavenegar] sent', { phone, messageId: entry.messageid, template });
   return { sent: true, provider: 'kavenegar', messageId: entry.messageid };
-}
-
-async function sendSms(phone, code) {
-  if (env.OTP_MODE === 'mock') {
-    console.info(`[otp:mock] SMS to ${phone}: code=${code}`);
-    return { sent: true, provider: 'mock' };
-  }
-
-  if (env.OTP_MODE === 'kavenegar') {
-    return sendSmsViaKavenegar(phone, code);
-  }
-
-  throw new Error(`حالت OTP نامعتبر است: ${env.OTP_MODE}`);
-}
-
-function buildDefaultCode(code, smsResult) {
-  if (env.OTP_MODE === 'mock') {
-    return code;
-  }
-  if (smsResult?.sent && code) {
-    return code;
-  }
-  return undefined;
 }
 
 export async function requestOtp(rawPhone) {
@@ -183,7 +130,7 @@ export async function requestOtp(rawPhone) {
     sentAt: now,
   });
 
-  const smsResult = await sendSms(phone, code);
+  const smsResult = await sendSmsViaKavenegar(phone, code);
 
   if (!smsResult.sent) {
     otpStore.delete(phone);
@@ -194,14 +141,10 @@ export async function requestOtp(rawPhone) {
     };
   }
 
-  const defaultCode = buildDefaultCode(code, smsResult);
-
   return {
     ok: true,
     phone,
     expiresInSec: Math.floor(OTP_TTL_MS / 1000),
-    ...(defaultCode ? { defaultCode } : {}),
-    ...(env.OTP_MODE === 'mock' && defaultCode ? { debugHint: defaultCode } : {}),
   };
 }
 

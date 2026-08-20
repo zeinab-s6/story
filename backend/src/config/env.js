@@ -142,20 +142,14 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || (isDevelopment ? 'dev-storytelling-jwt-secret-change-me' : ''),
   JWT_EXPIRES_IN_SEC: Number(process.env.JWT_EXPIRES_IN_SEC) || 60 * 60 * 24 * 7,
   DAILY_STORY_LIMIT: Number(process.env.DAILY_STORY_LIMIT) || 2,
-  OTP_MODE: (process.env.OTP_MODE || 'mock').toLowerCase(),
-  OTP_MOCK_CODE: (process.env.OTP_MOCK_CODE || '123456').trim(),
-  KAVENEGAR_API_KEY: (process.env.KAVENEGAR_API_KEY || process.env.MELIPAYAMAK_TOKEN || '').trim(),
-  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || process.env.MELIPAYAMAK_PATTERN_NAME || 'lalaByesignup18:40').trim(),
+  KAVENEGAR_API_KEY: (process.env.KAVENEGAR_API_KEY || '').trim(),
+  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || 'lalaByesignup18:40').trim(),
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
 
-if (!['mock', 'kavenegar'].includes(env.OTP_MODE)) {
-  throw new Error('OTP_MODE باید mock یا kavenegar باشد.');
-}
-
-if (env.OTP_MODE === 'kavenegar' && !env.KAVENEGAR_API_KEY) {
-  throw new Error('KAVENEGAR_API_KEY برای OTP_MODE=kavenegar الزامی است.');
+if (!env.KAVENEGAR_API_KEY) {
+  throw new Error('KAVENEGAR_API_KEY برای ارسال OTP الزامی است.');
 }
 
 if (isProduction && !env.JWT_SECRET?.trim()) {

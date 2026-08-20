@@ -145,11 +145,8 @@
     setLoading(btnSendOtp, true);
     try {
       var result = await window.StorytellingAPI.requestOtp(phone);
-      var defaultCode = result.defaultCode || result.debugHint || "";
-      var hint = defaultCode
-        ? "کد تأیید ارسال شد و در کادر قرار گرفت."
-        : "کد تأیید به شماره " + (result.phone || phone) + " ارسال شد.";
-      showOtpStep(result.phone || phone, hint, defaultCode);
+      var hint = "کد تأیید به شماره " + (result.phone || phone) + " ارسال شد. پیامک را چک کنید.";
+      showOtpStep(result.phone || phone, hint, "");
     } catch (err) {
       showError(resolveAuthError(err, "ارسال کد ناموفق بود."));
     } finally {
