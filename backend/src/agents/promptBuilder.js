@@ -61,9 +61,10 @@ DURATION LENGTH (STRICT — most important):
 - The parent selected exactly ${duration.durationMinutes} minute(s) of read-aloud / narration time.
 - storyText MUST be readable aloud in about ${duration.durationMinutes} minute(s) at a calm narration pace (~${duration.wordsPerMinute} Persian words per minute).
 - Target length for storyText: about ${duration.targetWords} words (acceptable range: ${duration.minWords}–${duration.maxWords} words).
+- Word map: 1 min≈120, 2 min≈240, 3 min≈360, 4 min≈480, 5 min≈600 Persian words in storyText.
 - This length will also drive TTS audio timing to ~${duration.targetSeconds} seconds — hit the word target closely.
 - Count whitespace-separated Persian words in storyText only (not title/parentIntro).
-- Do NOT write a tiny micro-story if duration is 3–5 minutes.
+- Do NOT write a tiny micro-story if duration is 3–5 minutes. A 5-minute story must be roughly 5× longer than a 1-minute story.
 - Do NOT pad with meaningless repetition; expand with gentle scenes, sensory detail, soft dialogue, and calm pacing instead.
 - parentIntro should stay short (1–2 sentences). Length control applies to storyText.
 

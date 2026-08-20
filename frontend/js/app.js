@@ -806,20 +806,38 @@
     ensureStoryAudioUrl();
     if (!state.audioFullUrl) return Promise.resolve(false);
     if (useApiPlayback()) {
-      return ensureStoryAudioReady({ reportError: false }).then(function (ready) {
-        if (!ready || !audioElement) return false;
-        applyStoryPlaybackSettings(audioElement);
-        return audioElement.play()
+      function startHtmlStoryPlayback() {
+        var element = ensureStoryAudioElement();
+        if (!element || !element.src) return Promise.resolve(false);
+        applyStoryPlaybackSettings(element);
+        return element.play()
           .then(function () {
             syncNativeBackgroundAmbience(true);
             syncPlayingState(true);
+            updateHomePlayCard();
             return true;
           })
-          .catch(function () {
+          .catch(function (err) {
             syncNativeBackgroundAmbience(false);
             syncPlayingState(false);
+            updateHomePlayCard();
+            if (err && err.name !== "AbortError") {
+              showToast("پخش قصه ممکن نشد. دوباره روی پخش بزن.", "error");
+            }
             return false;
           });
+      }
+
+      if (isStoryAudioHydrated()) {
+        return startHtmlStoryPlayback();
+      }
+
+      return ensureStoryAudioReady({ reportError: false }).then(function (ready) {
+        if (!ready) {
+          showToast("فایل صوتی قصه آماده نیست.", "error");
+          return false;
+        }
+        return startHtmlStoryPlayback();
       });
     }
     return playWithVoiceSettings(getPlaybackUrl());
@@ -1120,8 +1138,18 @@
 
   async function ensureStoryAudioReady(options) {
     options = options || {};
+
+    // Prefer already-hydrated local audio so play() can stay in the user-gesture path.
+    if (options.forceRefresh !== true && ensureStoryAudioUrl() && isStoryAudioHydrated()) {
+      var localEl = ensureStoryAudioElement();
+      return !!(localEl && localEl.src);
+    }
+
     var synced = await syncStoryAudioFromServer({ skipRestore: true });
-    if (!synced || !state.audioFullUrl) return false;
+    if (!synced || !state.audioFullUrl) {
+      // Fall back to whatever URL we already have from generation.
+      if (!ensureStoryAudioUrl()) return false;
+    }
 
     var element = ensureStoryAudioElement();
     if (!element) return false;
@@ -2305,7 +2333,7 @@
   }
 
   // Keep in sync with backend WORDS_PER_MINUTE (storyDuration.js).
-  var WORDS_PER_MINUTE = 96;
+  var WORDS_PER_MINUTE = 120;
 
   function estimateReadingMinutes(text) {
     if (!text) return 0;
@@ -3493,6 +3521,8 @@
         openQuotaModal(getQuotaBlockedMessage());
       } else if (!audioReady) {
         showToast("قصه ساخته شد. می‌توانی از بخش راوی دوباره تلاش کنی.", "info");
+      } else {
+        showToast("قصه آماده است — روی پخش بزن.", "success");
       }
     } catch (e) {
       if (e.name === "AbortError") {
@@ -3714,7 +3744,7 @@
         return;
       }
 
-      // Unlock autoplay while we still have the user gesture (before hydrate await).
+      // Unlock autoplay while we still have the user gesture (before any await).
       unlockAudioForUserGesture();
       stopPreviewPlayback();
       stopListAudioPlayback();
@@ -3722,22 +3752,13 @@
       if (!isStoryAudioHydrated()) {
         var ready = await ensureStoryAudioReady({ reportError: false });
         if (!ready) {
+          showToast("فایل صوتی قصه آماده نیست. دوباره تلاش کن.", "error");
           updateHomePlayCard();
           return;
         }
-        element = ensureStoryAudioElement();
       }
 
-      applyStoryPlaybackSettings(element);
-      element.play()
-        .then(function () {
-          syncNativeBackgroundAmbience(true);
-          syncPlayingState(true);
-        })
-        .catch(function () {
-          syncNativeBackgroundAmbience(false);
-          syncPlayingState(false);
-        });
+      await playGeneratedStoryAudio();
       updateHomePlayCard();
       return;
     }

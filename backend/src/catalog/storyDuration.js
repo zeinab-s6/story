@@ -2,10 +2,10 @@
  * Target spoken pace for Persian kids' stories + TTS (~calm narration).
  * Must stay in sync with frontend estimateReadingMinutes.
  *
- * Calibrated slightly above parent bedtime reading so TTS runtime
- * lands closer to the selected 1–5 minutes.
+ * Higher word targets for longer durations (e.g. 5 min ≈ 600 words)
+ * so the generated story text itself grows with the selected length.
  */
-export const WORDS_PER_MINUTE = 96;
+export const WORDS_PER_MINUTE = 120;
 
 /** Tight window around the word target (±10%). */
 const TOLERANCE = 0.1;

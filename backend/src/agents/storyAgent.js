@@ -49,7 +49,7 @@ async function adjustStoryToDuration(story, input) {
     return story;
   }
 
-  const maxAttempts = 3;
+  const maxAttempts = 4;
   let current = story;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

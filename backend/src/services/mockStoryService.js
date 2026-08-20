@@ -50,11 +50,21 @@ function fitStoryTextToDuration(baseText, input) {
   let words = countStoryWords(text);
   let bridgeIndex = 0;
 
-  while (words < minWords && bridgeIndex < 40) {
+  // Grow toward the target word count so longer durations yield longer stories.
+  while (words < targetWords && bridgeIndex < 80) {
     const bridge = SOFT_BRIDGES[bridgeIndex % SOFT_BRIDGES.length](childName, interest);
     text = `${text}\n${bridge}`;
     words = countStoryWords(text);
     bridgeIndex += 1;
+  }
+
+  if (words < minWords) {
+    while (words < minWords && bridgeIndex < 100) {
+      const bridge = SOFT_BRIDGES[bridgeIndex % SOFT_BRIDGES.length](childName, interest);
+      text = `${text}\n${bridge}`;
+      words = countStoryWords(text);
+      bridgeIndex += 1;
+    }
   }
 
   if (words > maxWords) {
