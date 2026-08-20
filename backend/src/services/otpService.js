@@ -1,29 +1,42 @@
 /**
- * OTP / SMS gateway.
+ * OTP / SMS gateway via Kavenegar REST API.
+ * @see https://kavenegar.com/rest.html — verify/lookup (اعتبارسنجی)
+ *
  * OTP_MODE=mock      → fixed code (OTP_MOCK_CODE), no SMS
- * OTP_MODE=kavenegar → Kavenegar verify/lookup with SMS_OTP_TEMPLATE
+ * OTP_MODE=kavenegar → GET verify/lookup.json with receptor, token, template
  */
-
-import env from '../config/env.js';
+import { env } from '../config/env.js';
 
 const otpStore = new Map();
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
+const KAVENEGAR_LOOKUP_URL = 'https://api.kavenegar.com/v1';
 
-function normalizePhone(phone) {
-  let digits = String(phone || '').replace(/\D/g, '');
-  if (digits.startsWith('98') && digits.length === 12) {
-    digits = `0${digits.slice(2)}`;
-  }
-  if (digits.startsWith('9') && digits.length === 10) {
-    digits = `0${digits}`;
-  }
-  return digits;
-}
+/** Kavenegar Lookup error codes from REST docs. */
+const KAVENEGAR_LOOKUP_ERRORS = {
+  418: 'اعتبار حساب کاوه‌نگار کافی نیست.',
+  422: 'داده‌های ارسالی قابل پردازش نیست.',
+  424: 'الگوی پیامک پیدا نشد یا هنوز تأیید نشده است.',
+  426: 'برای این سرویس باید سرویس پیشرفته کاوه‌نگار فعال باشد.',
+  428: 'ارسال کد از طریق تماس تلفنی برای این توکن امکان‌پذیر نیست.',
+  431: 'ساختار کد OTP نامعتبر است.',
+  432: 'پارامتر %token در متن الگو تعریف نشده است.',
+  607: 'نام تگ ارسالی اشتباه است.',
+};
 
-function isValidIranMobile(phone) {
-  return /^09\d{9}$/.test(phone);
+function normalizePhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length === 10 && digits.startsWith('9')) {
+    return `0${digits}`;
+  }
+  if (digits.length === 12 && digits.startsWith('98')) {
+    return `0${digits.slice(2)}`;
+  }
+  if (digits.length === 11 && digits.startsWith('09')) {
+    return digits;
+  }
+  return null;
 }
 
 function generateCode() {
@@ -34,80 +47,92 @@ function generateCode() {
 }
 
 /**
- * Accept plain Kavenegar keys or hex-encoded tokens from the panel.
+ * Kavenegar API keys are placed verbatim in the URL path (often hex strings).
  */
 function resolveKavenegarApiKey() {
-  const raw = env.KAVENEGAR_API_KEY;
+  const raw = String(env.KAVENEGAR_API_KEY || '').trim();
   if (!raw) return '';
-  if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0 && raw.length >= 40) {
+
+  if (/^[0-9A-Fa-f]{20,}$/.test(raw)) {
+    return raw;
+  }
+
+  if (/^[0-9A-Fa-f]+$/.test(raw) && raw.length % 2 === 0) {
     try {
       const decoded = Buffer.from(raw, 'hex').toString('utf8');
-      if (decoded && /^[\x20-\x7E]+$/.test(decoded)) {
+      if (decoded && /^[\x20-\x7E]+$/.test(decoded) && decoded.length >= 8) {
         return decoded;
       }
     } catch {
       /* use raw */
     }
   }
+
   return raw;
 }
 
+function mapKavenegarError(status, fallbackMessage) {
+  const mapped = KAVENEGAR_LOOKUP_ERRORS[Number(status)];
+  if (mapped) return mapped;
+  return fallbackMessage || 'ارسال پیامک با خطا مواجه شد.';
+}
+
+/**
+ * Kavenegar Verify Lookup — receptor + token + template
+ * Example: GET /v1/{API-KEY}/verify/lookup.json?receptor=09...&token=123456&template=lalaByesignup
+ */
 async function sendSmsViaKavenegar(phone, code) {
   const apiKey = resolveKavenegarApiKey();
   const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup';
 
   if (!apiKey) {
-    const error = new Error('کلید API کاوه‌نگار تنظیم نشده است.');
-    error.statusCode = 500;
-    throw error;
+    return { sent: false, error: 'KAVENEGAR_API_KEY تنظیم نشده است.' };
   }
 
   const params = new URLSearchParams({
     receptor: phone,
     token: code,
     template,
+    type: 'sms',
   });
 
-  const url = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/verify/lookup.json?${params.toString()}`;
+  const url = `${KAVENEGAR_LOOKUP_URL}/${apiKey}/verify/lookup.json?${params.toString()}`;
 
   let response;
   try {
-    response = await fetch(url, { method: 'GET' });
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
   } catch (err) {
-    const error = new Error('خطا در اتصال به سرویس پیامک کاوه‌نگار.');
-    error.statusCode = 502;
-    if (env.isDevelopment) {
-      error.details = err.message;
-    }
-    throw error;
+    console.error('[otp:kavenegar] network error:', err.message);
+    return { sent: false, error: 'اتصال به سرویس پیامک برقرار نشد.' };
   }
 
-  let payload = null;
+  let payload;
   try {
     payload = await response.json();
   } catch {
-    const error = new Error('پاسخ نامعتبر از کاوه‌نگار.');
-    error.statusCode = 502;
-    throw error;
+    return { sent: false, error: 'پاسخ نامعتبر از سرویس پیامک.' };
   }
 
-  const returnStatus = payload?.return?.status;
+  const returnStatus = Number(payload?.return?.status);
   const returnMessage = payload?.return?.message;
 
-  if (!response.ok || (returnStatus != null && Number(returnStatus) !== 200)) {
-    const error = new Error(
-      returnMessage
-        ? `ارسال پیامک ناموفق بود: ${returnMessage}`
-        : 'ارسال پیامک ناموفق بود.',
-    );
-    error.statusCode = 502;
-    if (env.isDevelopment) {
-      error.details = JSON.stringify(payload?.return || payload || {}).slice(0, 400);
-    }
-    throw error;
+  if (!response.ok || returnStatus !== 200) {
+    console.error('[otp:kavenegar] lookup failed:', returnStatus, returnMessage);
+    return {
+      sent: false,
+      error: mapKavenegarError(returnStatus, returnMessage),
+    };
   }
 
-  return { sent: true, provider: 'kavenegar' };
+  const entry = payload?.entries?.[0];
+  if (!entry) {
+    return { sent: false, error: 'پاسخ خالی از سرویس پیامک.' };
+  }
+
+  return { sent: true, provider: 'kavenegar', messageId: entry.messageid };
 }
 
 async function sendSms(phone, code) {
@@ -123,30 +148,31 @@ async function sendSms(phone, code) {
   throw new Error(`حالت OTP نامعتبر است: ${env.OTP_MODE}`);
 }
 
-export function validatePhone(rawPhone) {
-  const phone = normalizePhone(rawPhone);
-  if (!isValidIranMobile(phone)) {
-    return { valid: false, error: 'شماره موبایل معتبر نیست. مثال: ۰۹۱۲۳۴۵۶۷۸۹' };
+function buildDefaultCode(code, smsResult) {
+  if (env.OTP_MODE === 'mock') {
+    return code;
   }
-  return { valid: true, phone };
+  if (smsResult?.sent && code) {
+    return code;
+  }
+  return undefined;
 }
 
 export async function requestOtp(rawPhone) {
-  const validation = validatePhone(rawPhone);
-  if (!validation.valid) {
-    return { ok: false, error: validation.error, status: 400 };
+  const phone = normalizePhone(rawPhone);
+  if (!phone) {
+    return { ok: false, status: 400, error: 'شماره موبایل معتبر نیست (مثال: 09121234567).' };
   }
 
-  const { phone } = validation;
-  const existing = otpStore.get(phone);
   const now = Date.now();
+  const existing = otpStore.get(phone);
 
   if (existing && existing.sentAt && now - existing.sentAt < OTP_COOLDOWN_MS) {
     const waitSec = Math.ceil((OTP_COOLDOWN_MS - (now - existing.sentAt)) / 1000);
     return {
       ok: false,
-      error: `لطفاً ${waitSec} ثانیه صبر کنید و دوباره درخواست دهید.`,
       status: 429,
+      error: `لطفاً ${waitSec} ثانیه دیگر دوباره تلاش کنید.`,
     };
   }
 
@@ -155,61 +181,60 @@ export async function requestOtp(rawPhone) {
     code,
     expiresAt: now + OTP_TTL_MS,
     sentAt: now,
-    attempts: 0,
   });
 
-  try {
-    await sendSms(phone, code);
-  } catch (err) {
+  const smsResult = await sendSms(phone, code);
+
+  if (!smsResult.sent) {
     otpStore.delete(phone);
     return {
       ok: false,
-      error: err.message || 'ارسال پیامک ناموفق بود.',
-      status: err.statusCode || 502,
+      status: 502,
+      error: smsResult.error || 'ارسال پیامک ناموفق بود.',
     };
   }
+
+  const defaultCode = buildDefaultCode(code, smsResult);
 
   return {
     ok: true,
     phone,
     expiresInSec: Math.floor(OTP_TTL_MS / 1000),
-    // Prefill OTP input on login page after successful send.
-    defaultCode: code,
-    ...(env.OTP_MODE === 'mock' ? { debugHint: code } : {}),
+    ...(defaultCode ? { defaultCode } : {}),
+    ...(env.OTP_MODE === 'mock' && defaultCode ? { debugHint: defaultCode } : {}),
   };
 }
 
 export function verifyOtpCode(rawPhone, rawCode) {
-  const validation = validatePhone(rawPhone);
-  if (!validation.valid) {
-    return { ok: false, error: validation.error, status: 400 };
+  const phone = normalizePhone(rawPhone);
+  const code = String(rawCode || '').replace(/\D/g, '');
+
+  if (!phone) {
+    return { ok: false, status: 400, error: 'شماره موبایل معتبر نیست.' };
   }
 
-  const code = String(rawCode || '').trim();
   if (!/^\d{4,8}$/.test(code)) {
-    return { ok: false, error: 'کد تأیید معتبر نیست.', status: 400 };
+    return { ok: false, status: 400, error: 'کد تأیید باید ۴ تا ۸ رقم باشد.' };
   }
 
-  const { phone } = validation;
   const entry = otpStore.get(phone);
 
   if (!entry) {
-    return { ok: false, error: 'ابتدا کد تأیید را درخواست کنید.', status: 400 };
+    return { ok: false, status: 400, error: 'ابتدا درخواست دریافت کد بدهید.' };
   }
 
   if (Date.now() > entry.expiresAt) {
     otpStore.delete(phone);
-    return { ok: false, error: 'کد منقضی شده است. دوباره درخواست دهید.', status: 400 };
-  }
-
-  entry.attempts += 1;
-  if (entry.attempts > 5) {
-    otpStore.delete(phone);
-    return { ok: false, error: 'تعداد تلاش بیش از حد. دوباره کد بگیرید.', status: 429 };
+    return { ok: false, status: 400, error: 'کد منقضی شده است. دوباره درخواست بدهید.' };
   }
 
   if (entry.code !== code) {
-    return { ok: false, error: 'کد تأیید اشتباه است.', status: 401 };
+    entry.attempts = (entry.attempts || 0) + 1;
+    if (entry.attempts >= 5) {
+      otpStore.delete(phone);
+      return { ok: false, status: 400, error: 'تعداد تلاش‌ها زیاد شد. دوباره درخواست کد بدهید.' };
+    }
+    return { ok: false, status: 400, error: 'کد تأیید اشتباه است.' };
   }
 
   otpStore.delete(phone);
@@ -217,7 +242,6 @@ export function verifyOtpCode(rawPhone, rawCode) {
 }
 
 export default {
-  validatePhone,
   requestOtp,
   verifyOtpCode,
 };
