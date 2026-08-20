@@ -52,7 +52,7 @@ function mapKavenegarError(status, fallbackMessage) {
 
 async function sendSmsViaKavenegar(phone, code) {
   const apiKey = resolveKavenegarApiKey();
-  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup18:40';
+  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup';
 
   if (!apiKey) {
     return { sent: false, error: 'KAVENEGAR_API_KEY تنظیم نشده است.' };

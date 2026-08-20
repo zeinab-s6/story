@@ -143,7 +143,7 @@ export const env = {
   JWT_EXPIRES_IN_SEC: Number(process.env.JWT_EXPIRES_IN_SEC) || 60 * 60 * 24 * 7,
   DAILY_STORY_LIMIT: Number(process.env.DAILY_STORY_LIMIT) || 2,
   KAVENEGAR_API_KEY: (process.env.KAVENEGAR_API_KEY || '').trim(),
-  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || 'lalaByesignup18:40').trim(),
+  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || 'lalaByesignup').trim(),
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
