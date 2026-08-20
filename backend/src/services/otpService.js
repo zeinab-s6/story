@@ -79,11 +79,11 @@ function mapKavenegarError(status, fallbackMessage) {
 
 /**
  * Kavenegar Verify Lookup — receptor + token + template
- * Example: GET /v1/{API-KEY}/verify/lookup.json?receptor=09...&token=123456&template=lalaByesignup
+ * Example: GET /v1/{API-KEY}/verify/lookup.json?receptor=09...&token=123456&template=lalaByesignup18:40
  */
 async function sendSmsViaKavenegar(phone, code) {
   const apiKey = resolveKavenegarApiKey();
-  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup';
+  const template = env.SMS_OTP_TEMPLATE || 'lalaByesignup18:40';
 
   if (!apiKey) {
     return { sent: false, error: 'KAVENEGAR_API_KEY تنظیم نشده است.' };

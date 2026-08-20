@@ -145,7 +145,7 @@ export const env = {
   OTP_MODE: (process.env.OTP_MODE || 'mock').toLowerCase(),
   OTP_MOCK_CODE: (process.env.OTP_MOCK_CODE || '123456').trim(),
   KAVENEGAR_API_KEY: (process.env.KAVENEGAR_API_KEY || process.env.MELIPAYAMAK_TOKEN || '').trim(),
-  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || process.env.MELIPAYAMAK_PATTERN_NAME || 'lalaByesignup').trim(),
+  SMS_OTP_TEMPLATE: (process.env.SMS_OTP_TEMPLATE || process.env.MELIPAYAMAK_PATTERN_NAME || 'lalaByesignup18:40').trim(),
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
